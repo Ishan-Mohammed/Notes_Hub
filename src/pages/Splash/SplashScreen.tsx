@@ -50,7 +50,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           </motion.div>
           
           <h1 className="font-serif font-medium text-5xl sm:text-6xl tracking-tight text-foreground">
-            CS <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent italic font-semibold">NotesHub</span>
+            Notes <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent italic font-semibold">Hub</span>
           </h1>
         </motion.div>
 
@@ -61,7 +61,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           transition={{ delay: 0.5, duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
           className="mt-5 text-sm sm:text-base font-medium text-muted-foreground max-w-md leading-relaxed"
         >
-          Everything a Computer Science Student Needs,<br />
+          Everything a Student Needs,<br />
           <span className="text-foreground/95 font-semibold">All in One Hub.</span>
         </motion.p>
       </div>

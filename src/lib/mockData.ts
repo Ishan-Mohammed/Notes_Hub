@@ -1,6 +1,18 @@
-import type { Semester, Subject, ResourceCategory, Resource } from '../types/academic.types';
+/** Legacy mock types — kept for reference; app reads from Supabase now. */
+interface MockSemester { id: number; label: string; is_active: boolean; }
+interface MockSubject {
+  id: string; name: string; code: string; semester_id: number;
+  description?: string; credits?: number; slug: string; icon_name: string; route: string;
+  resources?: Record<string, unknown[]>;
+}
+interface MockResourceCategory { slug: string; label: string; description: string; icon_name: string; }
+interface MockResource {
+  id: string; title: string; url: string; subject_id: string; category_slug: string;
+  module_number?: number; is_verified?: boolean; file_size?: string; file_type?: string;
+  download_count?: number; created_at: string;
+}
 
-export const semesters: Semester[] = [
+export const semesters: MockSemester[] = [
   { id: 1, label: 'Semester 1', is_active: true },
   { id: 2, label: 'Semester 2', is_active: true },
   { id: 3, label: 'Semester 3', is_active: true },
@@ -11,7 +23,7 @@ export const semesters: Semester[] = [
   { id: 8, label: 'Semester 8', is_active: true }
 ];
 
-export const resourceCategories: ResourceCategory[] = [
+export const resourceCategories: MockResourceCategory[] = [
   { slug: 'notes', label: 'Module Notes', description: 'Handwritten and typed notes structured module by module.', icon_name: 'FileText' },
   { slug: 'pyq', label: 'University Questions', description: 'Previous year question papers sorted by academic year.', icon_name: 'History' },
   { slug: 'series-questions', label: 'Series Exams', description: 'Internal series exam questions from top engineering colleges.', icon_name: 'Bookmark' },
@@ -22,7 +34,7 @@ export const resourceCategories: ResourceCategory[] = [
   { slug: 'assignments', label: 'Assignments', description: 'Standard assignment sheets and challenge questions.', icon_name: 'ClipboardList' }
 ];
 
-export const resources: Resource[] = []; // Resource files will be linked dynamically in future phases
+export const resources: MockResource[] = [];
 
 const defaultResources = {
   notes: [],
@@ -38,7 +50,7 @@ const defaultResources = {
   youtube_classes: []
 };
 
-export const subjects: Subject[] = [
+export const subjects: MockSubject[] = [
   // --- SEMESTER 1 (S1) ---
   {
     id: 'mathematics-1',
