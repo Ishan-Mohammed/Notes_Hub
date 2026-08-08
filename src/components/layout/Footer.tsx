@@ -47,7 +47,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
 
         {/* Copy */}
         <div className="text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} Notes Hub. Handcrafted for Students by Students.
+          &copy; {new Date().getFullYear()} Notes Hub. Built with ❤️ by the CS NotesHub Core Team.
         </div>
 
       </div>

@@ -12,6 +12,8 @@ import {
   UserCheck, Bot, ArrowRight, ArrowLeft, GraduationCap, BookOpen
 } from 'lucide-react';
 
+import { subjects as mockSubjects } from '../../lib/mockData';
+
 // Fallback only — used if this page is somehow reached without a departmentId
 // (e.g. direct URL access). Normal flow always supplies it from LandingPage.
 const FALLBACK_DEPARTMENT_ID = 1; // CSE
@@ -44,23 +46,35 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
 
   useEffect(() => {
     const loadSemesters = async () => {
-      const { data, error } = await supabase
-        .from('semesters')
-        .select('*')
-        .order('semester_no');
+      let semList: Semester[] = [];
+      try {
+        const { data, error } = await supabase
+          .from('semesters')
+          .select('*')
+          .order('semester_no');
 
-      if (error) {
-        console.error('Error fetching semesters:', error.message);
-        return;
+        if (!error && data && data.length > 0) {
+          semList = data;
+        }
+      } catch (err) {
+        console.error('Error fetching semesters:', err);
       }
 
-      setSemesters(data ?? []);
+      if (semList.length === 0) {
+        semList = Array.from({ length: 8 }, (_, i) => ({
+          id: i + 1,
+          semester_no: i + 1,
+          name: `Semester ${i + 1}`,
+        }));
+      }
+
+      setSemesters(semList);
 
       const target = initialSemester ?? 3;
-      const match = data?.find(
+      const match = semList.find(
         (sem) => sem.id === target || sem.semester_no === target
       );
-      setSelectedSemesterId(match?.id ?? data?.[0]?.id ?? null);
+      setSelectedSemesterId(match?.id ?? semList[0]?.id ?? 1);
     };
 
     loadSemesters();
@@ -72,20 +86,40 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
     const loadSubjects = async () => {
       setLoadingSubjects(true);
 
-      const { data, error } = await supabase
-        .from('subjects')
-        .select('*')
-        .eq('semester_id', selectedSemesterId)
-        .eq('department_id', activeDepartmentId)
-        .order('subject_code');
+      try {
+        const { data, error } = await supabase
+          .from('subjects')
+          .select('*')
+          .eq('semester_id', selectedSemesterId)
+          .eq('department_id', activeDepartmentId)
+          .order('subject_code');
 
-      if (error) {
-        console.error('Error fetching subjects:', error.message);
-        setSubjects([]);
-      } else {
-        setSubjects(data ?? []);
+        if (!error && data && data.length > 0) {
+          setSubjects(data);
+          setLoadingSubjects(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Error fetching subjects:', err);
       }
 
+      // Safe fallback when Supabase is unconfigured or returns no records
+      const fallback = mockSubjects
+        .filter((s) => s.semester_id === selectedSemesterId)
+        .map((s, idx) => ({
+          id: idx + 1 + (selectedSemesterId * 100),
+          department_id: activeDepartmentId,
+          semester_id: selectedSemesterId,
+          subject_code: s.code,
+          subject_name: s.name,
+          slug: s.slug || null,
+          description: s.description || null,
+          credits: s.credits || 3,
+          icon_name: s.icon_name || null,
+          subject_type: 'theory' as const,
+        }));
+
+      setSubjects(fallback);
       setLoadingSubjects(false);
     };
 

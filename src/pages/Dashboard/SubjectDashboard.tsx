@@ -67,6 +67,8 @@ const RESOURCE_TYPE_CONFIG: Record<string, string[]> = {
   ],
 };
 
+import { subjects as mockSubjects, resourceCategories as mockCategories } from '../../lib/mockData';
+
 export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, onNavigate }) => {
   const [subject, setSubject] = useState<Subject | null>(null);
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
@@ -78,34 +80,64 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
     const loadData = async () => {
       setLoading(true);
 
-      const [subjectRes, typesRes, resourcesRes] = await Promise.all([
-        supabase.from('subjects').select('*').eq('id', subjectId).single(),
-        supabase.from('resource_types').select('*').order('display_order'),
-        supabase
-          .from('resources')
-          .select('*, resource_types(slug, name, icon_name), modules(module_no)')
-          .eq('subject_id', subjectId),
-      ]);
+      try {
+        const [subjectRes, typesRes, resourcesRes] = await Promise.all([
+          supabase.from('subjects').select('*').eq('id', subjectId).single(),
+          supabase.from('resource_types').select('*').order('display_order'),
+          supabase
+            .from('resources')
+            .select('*, resource_types(slug, name, icon_name), modules(module_no)')
+            .eq('subject_id', subjectId),
+        ]);
 
-      if (subjectRes.error) {
-        console.error('Error fetching subject:', subjectRes.error.message);
-        setSubject(null);
-      } else {
-        setSubject(subjectRes.data);
-      }
+        if (subjectRes.data) {
+          setSubject(subjectRes.data);
+        } else {
+          // Fallback lookup from mockData
+          const fallbackMatch =
+            mockSubjects.find((s, idx) => (idx + 1 + (s.semester_id * 100)) === subjectId) ||
+            mockSubjects[0];
 
-      if (typesRes.error) {
-        console.error('Error fetching resource types:', typesRes.error.message);
-        setResourceTypes([]);
-      } else {
-        setResourceTypes(typesRes.data ?? []);
-      }
+          if (fallbackMatch) {
+            setSubject({
+              id: subjectId,
+              department_id: 1,
+              semester_id: fallbackMatch.semester_id,
+              subject_code: fallbackMatch.code,
+              subject_name: fallbackMatch.name,
+              slug: fallbackMatch.slug || null,
+              description: fallbackMatch.description || null,
+              credits: fallbackMatch.credits || 3,
+              icon_name: fallbackMatch.icon_name || null,
+              subject_type: 'theory',
+            });
+          } else {
+            setSubject(null);
+          }
+        }
 
-      if (resourcesRes.error) {
-        console.error('Error fetching resources:', resourcesRes.error.message);
-        setResources([]);
-      } else {
-        setResources(resourcesRes.data ?? []);
+        if (typesRes.data && typesRes.data.length > 0) {
+          setResourceTypes(typesRes.data);
+        } else {
+          setResourceTypes(
+            mockCategories.map((c, i) => ({
+              id: i + 1,
+              name: c.label,
+              slug: c.slug,
+              description: c.description,
+              icon_name: c.icon_name,
+              display_order: i + 1,
+            }))
+          );
+        }
+
+        if (resourcesRes.data && resourcesRes.data.length > 0) {
+          setResources(resourcesRes.data);
+        } else {
+          setResources([]);
+        }
+      } catch (err) {
+        console.error('Error loading subject data:', err);
       }
 
       setLoading(false);
@@ -260,6 +292,18 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
                   const resourceUrl = res.youtube_url || res.file_url;
                   const isYoutube = activeCategory === 'youtube';
 
+                  const isTargetNotesSubject = Boolean(
+                    activeCategory === 'notes' &&
+                    subject?.subject_name &&
+                    (
+                      subject.subject_name.toLowerCase().includes('machine learning') ||
+                      subject.subject_name.toLowerCase().includes('microcontroller') ||
+                      subject.subject_name.toLowerCase().includes('microprocessors and microcontrollers')
+                    )
+                  );
+
+                  const displayTitle = isTargetNotesSubject ? 'MODULE 1' : res.title;
+
                   return (
                     <motion.div
                       key={res.id}
@@ -275,8 +319,8 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h4 className="font-sans font-semibold text-base sm:text-[18px] tracking-tight text-foreground leading-tight truncate group-hover:text-primary transition-colors">
-                              {res.title}
+                            <h4 className={`font-sans tracking-tight text-foreground leading-tight truncate group-hover:text-primary transition-colors ${isTargetNotesSubject ? 'font-bold text-base sm:text-[18px] tracking-wide' : 'font-semibold text-base sm:text-[18px]'}`}>
+                              {displayTitle}
                             </h4>
                             {res.is_verified && (
                               <span className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">

@@ -3,8 +3,40 @@ import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import {
   ArrowRight, Sparkles, Code, Radio, Zap, Bot, Cpu, Cog,
-  Target, CheckCircle2, ChevronDown, Loader2
+  Target, CheckCircle2, ChevronDown, Loader2, Users
 } from 'lucide-react';
+
+interface TeamMember {
+  name: string;
+  role: string;
+  responsibilities: string;
+  instagram: string;
+  initials: string;
+}
+
+const coreTeamMembers: TeamMember[] = [
+  {
+    name: 'Roshan B Panicker',
+    role: 'Project Lead & Content Coordinator',
+    responsibilities: 'Idea • Coordination • Academic Content',
+    instagram: 'https://www.instagram.com/roshan_b_panicker?igsh=eWI5ajkxdGkyNGV5',
+    initials: 'RP',
+  },
+  {
+    name: 'Arnav Manesh',
+    role: 'Backend Developer',
+    responsibilities: 'Backend • Database • APIs',
+    instagram: 'https://www.instagram.com/arnavmanesh?igsh=MWl5dXV0b2h6MHA5Yg==',
+    initials: 'AM',
+  },
+  {
+    name: 'Ishan Mohammed',
+    role: 'Frontend Developer',
+    responsibilities: 'UI/UX • React • Frontend Development',
+    instagram: 'https://www.instagram.com/mhd_ishan._22?igsh=ZjVyZGhqeTZ6Zm8x',
+    initials: 'IM',
+  },
+];
 
 interface LandingPageProps {
   onNavigate: (page: string, params?: any) => void;
@@ -94,11 +126,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
     const map = await idMapPromiseRef.current!;
     setPendingCode(null);
 
-    const id = map[dept.code];
-    if (!id) {
-      console.error(`Department "${dept.code}" has no matching row in the database — check that the code matches exactly.`);
-      return;
-    }
+    const id = map[dept.code] ?? (DEPARTMENTS.findIndex((d) => d.code === dept.code) + 1);
 
     onNavigate('semesterSelect', { departmentId: id, departmentName: dept.name, departmentCode: dept.code });
   };
@@ -161,10 +189,86 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
 
       </section>
 
-      {/* 2. Browse by Department — renders instantly, no fetch wait */}
+      {/* 2. Core Team Recognition — Compact & Direct */}
+      <section className="w-full max-w-5xl pt-2 pb-14">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="glass-panel p-6 sm:p-8 rounded-3xl border border-border/40 relative overflow-hidden"
+        >
+          {/* Section Header */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/8 border border-primary/20 text-[11px] font-semibold text-primary mb-2.5">
+              <Users size={12} />
+              <span>BUILT BY THE CORE TEAM</span>
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">
+              The people behind CS NotesHub — building, organizing, and maintaining a better academic experience for Computer Science students.
+            </p>
+          </div>
+
+          {/* Team Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+            {coreTeamMembers.map((member, idx) => (
+              <motion.a
+                key={member.name}
+                href={member.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Visit ${member.name}'s profile on Instagram`}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.08, duration: 0.4 }}
+                whileHover={{ y: -4 }}
+                className="p-5 rounded-2xl bg-background/50 hover:bg-background/80 dark:bg-muted/20 dark:hover:bg-muted/40 border border-border/40 hover:border-primary/45 hover:shadow-md hover:shadow-primary/5 transition-all duration-300 flex flex-col justify-between group cursor-pointer"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary/15 via-primary/10 to-secondary/15 text-primary border border-primary/20 flex items-center justify-center font-display font-extrabold text-xs tracking-wider group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all duration-300 shadow-sm">
+                      {member.initials}
+                    </div>
+                    <div className="w-7 h-7 rounded-lg bg-muted/40 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                      <ArrowRight size={13} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    </div>
+                  </div>
+
+                  <h3 className="font-sans font-bold text-base text-foreground tracking-tight group-hover:text-primary transition-colors mb-0.5">
+                    {member.name}
+                  </h3>
+                  <p className="font-display font-medium text-[12px] text-primary mb-3">
+                    {member.role}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-border/25">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 block mb-0.5">
+                    Responsibilities
+                  </span>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed font-sans">
+                    {member.responsibilities}
+                  </p>
+                </div>
+              </motion.a>
+            ))}
+          </div>
+
+          {/* Contact / Query Subtext */}
+          <div className="mt-6 text-center pt-4 border-t border-border/20">
+            <p className="text-xs text-muted-foreground font-sans">
+              Have a question, suggestion, or found an issue?{' '}
+              <span className="text-foreground/90 font-medium">Reach out to the core team.</span>
+            </p>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* 3. Browse by Department — renders instantly, no fetch wait */}
       <section
         id="browse-departments"
-        className="w-full max-w-5xl pt-16 pb-24 border-t border-border/15"
+        className="w-full max-w-5xl pt-10 pb-24 border-t border-border/15"
       >
         <div className="text-center mb-12">
           <h2 className="font-sans text-2xl sm:text-[32px] font-semibold text-foreground tracking-tight mb-2">
