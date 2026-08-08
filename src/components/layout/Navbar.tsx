@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTheme } from '../../context/ThemeContext';
-import { Sun, Moon, Menu, X, GraduationCap, Home, BookOpen, Info, Github } from 'lucide-react';
+import { Sun, Moon, Menu, X, GraduationCap, Home, BookOpen, Info, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavbarProps {
@@ -8,16 +8,45 @@ interface NavbarProps {
   currentPage: string;
 }
 
+// Id of the department grid section on LandingPage.tsx. Keep these two in sync.
+const DEPARTMENTS_SECTION_ID = 'browse-departments';
+
 export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
   const { theme, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  // 'resources' has no dedicated page, so currentPage can never match it and give it a
+  // persistent highlight. This gives it a brief highlight flash on click instead, so it
+  // still feels responsive rather than silently doing nothing visually.
+  const [flashingValue, setFlashingValue] = useState<string | null>(null);
 
   const navItems = [
     { label: 'Home', value: 'landing', icon: Home },
-    { label: 'Browse Semesters', value: 'semester', icon: GraduationCap },
-    { label: 'Resources', value: 'semester', icon: BookOpen }, // Links to resource selector
-    { label: 'About', value: 'about', icon: Info },
+    { label: 'Resources', value: 'resources', icon: BookOpen }, // Scroll-only: jumps to the department grid on landing
+    { label: 'About', value: 'about', icon: Info },             // Real navigation: goes to the /about page
   ];
+
+  const scrollToDepartments = () => {
+    const el = document.getElementById(DEPARTMENTS_SECTION_ID);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // Not on the landing page — navigate there first, then scroll once it mounts.
+      onNavigate('landing');
+      setTimeout(() => {
+        document.getElementById(DEPARTMENTS_SECTION_ID)?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  };
+
+  const handleNavClick = (value: string) => {
+    if (value === 'resources') {
+      setFlashingValue('resources');
+      setTimeout(() => setFlashingValue(null), 600);
+      scrollToDepartments();
+    } else {
+      onNavigate(value);
+    }
+  };
 
   return (
     <nav className="fixed top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-6xl z-50">
@@ -32,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
             <GraduationCap size={20} className="stroke-[2.5]" />
           </div>
           <span className="font-display font-extrabold text-xl tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-            CS <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent italic font-semibold">NotesHub</span>
+            Notes <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent italic font-semibold">Hub</span>
           </span>
         </div>
 
@@ -40,26 +69,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
         <div className="hidden md:flex items-center gap-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentPage === item.value;
+            const isActive =
+              item.value === 'resources'
+                ? flashingValue === 'resources'
+                : currentPage === item.value;
             return (
               <button
                 key={item.value}
-                onClick={() => {
-                  if (item.value === 'about') {
-                    // Smooth scroll to the feature section on homepage
-                    const el = document.getElementById('why-choose-us');
-                    if (el) {
-                      el.scrollIntoView({ behavior: 'smooth' });
-                    } else {
-                      onNavigate('landing');
-                      setTimeout(() => {
-                        document.getElementById('why-choose-us')?.scrollIntoView({ behavior: 'smooth' });
-                      }, 100);
-                    }
-                  } else {
-                    onNavigate(item.value);
-                  }
-                }}
+                onClick={() => handleNavClick(item.value)}
                 className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 flex items-center gap-2 overflow-hidden group cursor-pointer ${
                   isActive 
                     ? 'text-primary' 
@@ -78,21 +95,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
               </button>
             );
           })}
-
-          {/* GitHub link icon */}
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 transition-all duration-300"
-          >
-            <Github size={16} />
-            <span>GitHub</span>
-          </a>
         </div>
 
-        {/* Actions (Search, Theme, Notification) */}
+        {/* Actions (Login, Theme, Menu) */}
         <div className="flex items-center gap-2">
+          {/* Login (placeholder for future admin page) */}
+          <button
+            onClick={() => onNavigate('login')}
+            className={`hidden sm:flex px-4 py-2 rounded-xl text-sm font-medium items-center gap-2 transition-all duration-300 border cursor-pointer ${
+              currentPage === 'login'
+                ? 'text-primary bg-primary/8 dark:bg-primary/12 border-primary/20'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-transparent hover:border-border/30'
+            }`}
+          >
+            <LogIn size={16} />
+            <span>Login</span>
+          </button>
+
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
@@ -124,12 +143,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
           >
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentPage === item.value;
+              const isActive =
+                item.value === 'resources'
+                  ? flashingValue === 'resources'
+                  : currentPage === item.value;
               return (
                 <button
                   key={item.value}
                   onClick={() => {
-                    onNavigate(item.value);
+                    handleNavClick(item.value);
                     setIsOpen(false);
                   }}
                   className={`w-full px-4 py-3 rounded-xl text-left text-sm font-medium flex items-center gap-3 transition-colors ${
@@ -143,6 +165,22 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
                 </button>
               );
             })}
+
+            {/* Login (mobile) */}
+            <button
+              onClick={() => {
+                onNavigate('login');
+                setIsOpen(false);
+              }}
+              className={`w-full px-4 py-3 rounded-xl text-left text-sm font-medium flex items-center gap-3 transition-colors ${
+                currentPage === 'login'
+                  ? 'bg-primary/8 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+              }`}
+            >
+              <LogIn size={18} />
+              <span>Login</span>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

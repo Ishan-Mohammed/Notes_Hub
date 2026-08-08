@@ -16,7 +16,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <GraduationCap size={16} />
           </div>
           <span className="font-display font-bold text-md tracking-tight">
-            CS <span className="text-primary">NotesHub</span>
+            Notes <span className="text-primary">Hub</span>
           </span>
         </div>
 
@@ -29,7 +29,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             Home
           </button>
           <button 
-            onClick={() => onNavigate('semester')}
+            onClick={() => onNavigate('landing')}
             className="hover:text-foreground transition-colors duration-200 cursor-pointer"
           >
             Browse
@@ -47,7 +47,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
 
         {/* Copy */}
         <div className="text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} CS NotesHub. Handcrafted for CS Students.
+          &copy; {new Date().getFullYear()} Notes Hub. Handcrafted for Students by Students.
         </div>
 
       </div>

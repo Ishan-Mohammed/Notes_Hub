@@ -1,61 +1,61 @@
+export type SubjectType = 'theory' | 'lab' | 'project';
+
+export interface Department {
+  id: number;
+  code: string;
+  name: string;
+}
+
 export interface Semester {
   id: number;
-  label: string;
-  is_active: boolean;
+  semester_no: number;
+  name: string;
 }
 
 export interface Subject {
-  id: string;
-  name: string;
-  code: string;
+  id: number;
+  department_id: number;
   semester_id: number;
-  description?: string;
-  credits?: number;
-  slug: string;
-  icon_name: string;
-  route: string; // e.g. '/semester-5/machine-learning'
-  resources?: {
-    notes: any[];
-    series_questions: any[];
-    model_questions: any[];
-    pyq: any[];
-    syllabus: any[];
-    lab_questions: any[];
-    assignments: any[];
-    mini_projects: any[];
-    reference_books: any[];
-    reference_videos: any[];
-    youtube_classes: any[];
-  };
+  subject_code: string;
+  subject_name: string;
+  slug: string | null;
+  description: string | null;
+  credits: number | null;
+  icon_name: string | null;
+  subject_type: SubjectType | null; 
 }
 
-export type ResourceCategorySlug = 
-  | 'notes' 
-  | 'series-questions' 
-  | 'model-questions' 
-  | 'pyq' 
-  | 'syllabus' 
-  | 'lab-questions' 
-  | 'youtube' 
-  | 'assignments';
+export interface Module {
+  id: number;
+  subject_id: number;
+  module_no: number;
+  module_title: string;
+}
 
-export interface ResourceCategory {
-  slug: ResourceCategorySlug;
-  label: string;
-  description: string;
-  icon_name: string;
+export interface ResourceType {
+  id: number;
+  name: string;
+  slug: string | null;
+  description: string | null;
+  icon_name: string | null;
+  display_order: number | null;
 }
 
 export interface Resource {
-  id: string;
+  id: number;
+  subject_id: number;
+  module_id: number | null;
+  resource_type_id: number;
   title: string;
-  url: string;
-  subject_id: string;
-  category_slug: ResourceCategorySlug;
-  module_number?: number; // 1 to 6, optional for notes
-  is_verified?: boolean;
-  file_size?: string; // e.g., '2.4 MB'
-  file_type?: string; // e.g., 'PDF', 'Link'
-  download_count?: number;
-  created_at: string;
+  year: number | null;
+  file_url: string | null;
+  youtube_url: string | null;
+  description: string | null;
+  uploaded_at: string | null;
+  file_type: string | null;
+  download_count: number | null;
+  is_verified: boolean | null;
+  file_size: string | null;
+  resource_types?: Pick<ResourceType, 'slug' | 'name' | 'icon_name'>;
+  modules?: Pick<Module, 'module_no'>;
 }
