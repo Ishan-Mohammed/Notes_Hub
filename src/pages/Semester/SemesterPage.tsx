@@ -2,19 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { MVP_CONFIG, CSE_SUBJECTS_2024, type SubjectDefinition } from '../../lib/config';
-import { SemesterTransition } from '../../components/common/SemesterTransition';
 
 import {
   Calculator, Atom, FlaskConical, PenTool, Code, Heart,
   MessageSquare, Globe, Cpu, Database, FolderOpen, TrendingUp,
   ShieldCheck, Layers, Network, Brain, ArrowRight, ArrowLeft,
-  GraduationCap, BookOpen, ChevronRight, Zap
+  GraduationCap, BookOpen, ChevronRight, Zap, Bot
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ComponentType<any>> = {
   Calculator, Atom, FlaskConical, PenTool, Code, Heart,
   MessageSquare, Globe, Cpu, Database, FolderOpen, TrendingUp,
-  ShieldCheck, Layers, Network, Brain, Zap
+  ShieldCheck, Layers, Network, Brain, Zap, Bot
 };
 
 interface SemesterPageProps {
@@ -32,31 +31,12 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
 
   const [subjects, setSubjects] = useState<SubjectDefinition[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
-  const [showTransition, setShowTransition] = useState(true);
-  const [transitionSem, setTransitionSem] = useState<number | null>(selectedSemesterNo);
 
-  // Trigger transition splash on semester switch
+  // Fast, direct semester tab switching without artificial loading screens
   const handleSemesterChange = (semNum: number) => {
     if (semNum === selectedSemesterNo) return;
     setSelectedSemesterNo(semNum);
-    setTransitionSem(semNum);
-    setShowTransition(true);
-
-    setTimeout(() => {
-      setShowTransition(false);
-    }, 900);
   };
-
-  useEffect(() => {
-    // Initial transition trigger
-    setTransitionSem(selectedSemesterNo);
-    setShowTransition(true);
-    const timer = setTimeout(() => {
-      setShowTransition(false);
-    }, 900);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     const loadSubjects = async () => {
@@ -115,12 +95,12 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
     loadSubjects();
   }, [selectedSemesterNo]);
 
-  // Group subjects by OR groups
+  // Render subject grid with systematic height alignment & OR choice pairing
   const renderSubjectGrid = () => {
     if (loadingSubjects) {
       return (
-        <div className="col-span-full py-20 text-center text-muted-foreground text-sm font-sans">
-          Preparing your subjects...
+        <div className="col-span-full py-16 text-center text-muted-foreground text-sm font-sans">
+          Loading subjects...
         </div>
       );
     }
@@ -137,7 +117,6 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
       );
     }
 
-    // Process OR groups vs standalone subjects
     const processedNodes: React.ReactNode[] = [];
     const handledOrGroups = new Set<string>();
 
@@ -153,20 +132,27 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
             key={subject.orGroupId}
             className="col-span-full glass-panel p-5 sm:p-7 rounded-3xl border border-primary/25 relative overflow-hidden bg-primary/5 dark:bg-primary/5 my-2"
           >
-            <div className="flex items-center gap-2 mb-5">
-              <span className="px-3 py-1 rounded-full bg-primary/15 text-primary text-[10px] font-mono font-bold tracking-wider uppercase border border-primary/20">
-                OR ELECTIVE CHOICE
-              </span>
-              <span className="text-xs font-semibold text-foreground font-sans">
-                {subject.orGroupTitle || 'Select either subject choice'}
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-primary/15 text-primary text-[10px] font-mono font-bold tracking-wider uppercase border border-primary/20">
+                  OR ELECTIVE CHOICE
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-foreground font-sans">
+                  {subject.orGroupTitle || 'Select either course choice'}
+                </span>
+              </div>
+              {groupSubjects[0]?.credits && (
+                <span className="text-xs font-mono font-bold text-primary px-2.5 py-0.5 rounded bg-primary/10 border border-primary/20">
+                  {groupSubjects[0].credits} Credits
+                </span>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative items-stretch">
               {groupSubjects.map((sub, idx) => {
                 const SubIcon = iconMap[sub.iconName] || Code;
                 return (
-                  <React.Fragment key={sub.code}>
+                  <React.Fragment key={sub.id}>
                     {idx > 0 && (
                       <div className="md:hidden flex justify-center my-1">
                         <span className="px-3 py-1 rounded-full bg-primary text-primary-foreground font-mono font-bold text-xs shadow-md">
@@ -177,33 +163,30 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
                     <motion.div
                       whileHover={{ y: -4, scale: 1.01 }}
                       onClick={() => onNavigate('dashboard', { subjectId: sub.id, subjectCode: sub.code, subjectName: sub.name, credits: sub.credits, semId: selectedSemesterNo })}
-                      className="glass-panel p-6 rounded-2xl flex flex-col justify-between hover:border-primary/50 shadow-sm transition-all duration-300 group cursor-pointer bg-background/80 dark:bg-background/60"
+                      className="glass-panel p-6 rounded-2xl flex flex-col justify-between h-full border border-border/40 hover:border-primary/50 shadow-sm transition-all duration-300 group cursor-pointer bg-background/80 dark:bg-background/60"
                     >
-                      <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                      <div className="flex flex-col flex-grow">
+                        <div className="flex items-center justify-between mb-4 shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                             <SubIcon size={19} className="stroke-[2.2]" />
                           </div>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-2.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
                               {sub.code}
-                            </span>
-                            <span className="text-[10px] font-sans font-semibold text-primary px-2 py-0.5 rounded bg-primary/8">
-                              {sub.credits} Credits
                             </span>
                           </div>
                         </div>
 
-                        <h3 className="font-sans font-bold text-lg sm:text-xl tracking-tight text-foreground mb-2 group-hover:text-primary transition-colors">
+                        <h3 className="font-sans font-bold text-lg sm:text-xl tracking-tight text-foreground mb-2.5 min-h-[3.25rem] flex items-center group-hover:text-primary transition-colors">
                           {sub.name}
                         </h3>
 
-                        <p className="text-xs sm:text-sm font-normal text-muted-foreground leading-relaxed mb-6 line-clamp-3">
+                        <p className="text-xs sm:text-sm font-normal text-muted-foreground leading-relaxed mb-6 line-clamp-3 flex-grow">
                           {sub.description}
                         </p>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs font-semibold text-primary mt-auto pt-3 border-t border-border/20">
+                      <div className="flex items-center justify-between text-xs font-semibold text-primary pt-3 border-t border-border/20 shrink-0 mt-auto">
                         <span>Explore Subject</span>
                         <div className="w-7 h-7 rounded-lg bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground flex items-center justify-center transition-all duration-300">
                           <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform stroke-[2.5]" />
@@ -229,18 +212,18 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
         processedNodes.push(
           <motion.div
             key={subject.code}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ y: -4, scale: 1.01 }}
             onClick={() => onNavigate('dashboard', { subjectId: subject.id, subjectCode: subject.code, subjectName: subject.name, credits: subject.credits, semId: selectedSemesterNo })}
-            className="glass-panel p-6 rounded-2xl flex flex-col justify-between hover:border-primary/45 shadow-sm transition-all duration-300 group cursor-pointer"
+            className="glass-panel p-6 rounded-2xl flex flex-col justify-between h-full border border-border/40 hover:border-primary/45 shadow-sm transition-all duration-300 group cursor-pointer"
           >
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/8 text-primary flex items-center justify-center">
+            <div className="flex flex-col flex-grow">
+              <div className="flex items-center justify-between mb-4 shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-primary/8 text-primary flex items-center justify-center shrink-0">
                   <SubIcon size={19} className="stroke-[2.2]" />
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-2.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/40">
                     {subject.code}
                   </span>
@@ -250,16 +233,16 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
                 </div>
               </div>
 
-              <h3 className="font-sans font-bold text-lg sm:text-xl tracking-tight text-foreground mb-2.5 group-hover:text-primary transition-colors">
+              <h3 className="font-sans font-bold text-lg sm:text-xl tracking-tight text-foreground mb-2.5 min-h-[3.25rem] flex items-center group-hover:text-primary transition-colors">
                 {subject.name}
               </h3>
 
-              <p className="text-xs sm:text-sm font-normal text-muted-foreground/85 leading-relaxed mb-6 line-clamp-3">
+              <p className="text-xs sm:text-sm font-normal text-muted-foreground/85 leading-relaxed mb-6 line-clamp-3 flex-grow">
                 {subject.description}
               </p>
             </div>
 
-            <div className="flex items-center justify-between text-xs font-semibold text-primary mt-auto pt-3 border-t border-border/20">
+            <div className="flex items-center justify-between text-xs font-semibold text-primary pt-3 border-t border-border/20 shrink-0 mt-auto">
               <span>Explore Subject</span>
               <div className="w-7 h-7 rounded-lg bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground flex items-center justify-center transition-all duration-300">
                 <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform stroke-[2.5]" />
@@ -276,10 +259,7 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
   return (
     <div className="w-full max-w-6xl mx-auto px-6 pt-24 pb-16">
 
-      {/* Reusable Animated Semester Transition Overlay */}
-      <SemesterTransition isVisible={showTransition} semesterNum={transitionSem} />
-
-      {/* Navigation Header & Breadcrumb Bar */}
+      {/* Navigation Header & Breadcrumbs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <button
           onClick={() => onNavigate('landing')}
@@ -289,7 +269,7 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
           <span>Back to Semesters</span>
         </button>
 
-        {/* Clean Breadcrumb Hierarchy */}
+        {/* Clean Breadcrumbs */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
           <span className="cursor-pointer hover:text-foreground" onClick={() => onNavigate('landing')}>Notes Hub</span>
           <ChevronRight size={12} />
@@ -301,7 +281,7 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
         </div>
       </div>
 
-      {/* Page Header */}
+      {/* Page Title & Header */}
       <div className="mb-10">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/8 border border-primary/20 text-[11px] font-semibold text-primary mb-3">
           <GraduationCap size={12} />
@@ -310,12 +290,12 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
         <h1 className="font-sans font-bold text-3xl sm:text-[44px] tracking-tight leading-tight text-foreground mb-3">
           Semester {selectedSemesterNo} Subjects
         </h1>
-        <p className="text-base sm:text-[18px] font-normal text-muted-foreground max-w-xl leading-relaxed">
-          Select a subject below to explore its notes, previous year questions, lab manuals, and video lectures.
+        <p className="text-base sm:text-[18px] font-normal text-muted-foreground max-w-xl leading-relaxed font-sans">
+          Choose a subject to explore its academic resources, syllabus, module notes, and important topics.
         </p>
       </div>
 
-      {/* Semester Tab Selector (S1, S3, S5) */}
+      {/* Semester Tab Switcher (S1, S3, S5) */}
       <div className="w-full overflow-x-auto pb-4 mb-10 flex gap-2 border-b border-border/20 no-scrollbar">
         {MVP_CONFIG.activeSemesters.map((semNum) => {
           const isActive = selectedSemesterNo === semNum;
@@ -343,15 +323,15 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
         })}
       </div>
 
-      {/* Dynamic Subjects Grid with Staggered Transition */}
+      {/* Subject Cards Grid (Systematic Equal Height Alignment) */}
       <AnimatePresence mode="wait">
         <motion.div
           key={selectedSemesterNo}
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -15 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch"
         >
           {renderSubjectGrid()}
         </motion.div>

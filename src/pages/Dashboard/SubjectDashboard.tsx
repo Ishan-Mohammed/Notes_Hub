@@ -6,12 +6,13 @@ import { CSE_SUBJECTS_2024 } from '../../lib/config';
 import {
   ArrowLeft, FileText, History, Bookmark, Layers,
   BookOpen, Terminal, Youtube, ClipboardList,
-  ExternalLink, Download, CheckCircle, Info,
-  FlaskConical, FolderGit2, Library, Video, NotebookPen, HelpCircle
+  Download, CheckCircle, Info,
+  FlaskConical, FolderGit2, Library, Video, NotebookPen, HelpCircle,
+  ChevronRight
 } from 'lucide-react';
 
 interface SubjectDashboardProps {
-  subjectId: number;
+  subjectId: number | string;
   onNavigate: (page: string, params?: any) => void;
 }
 
@@ -32,47 +33,45 @@ const iconMap: Record<string, React.ComponentType<any>> = {
   MessageSquareQuestion: HelpCircle,
 };
 
-// Which resource_types.slug values are shown, and in what order, per subject_type.
-// Falls back to 'theory' if a subject has no type or an unrecognized one.
+// User-facing MVP categories: ONLY Module Notes, Important Topics, Syllabus
+const MVP_RESOURCE_TYPES: ResourceType[] = [
+  {
+    id: 1,
+    name: 'Module Notes',
+    slug: 'notes',
+    description: 'Comprehensive handwritten and typed notes structured by module.',
+    icon_name: 'FileText',
+    display_order: 1,
+  },
+  {
+    id: 2,
+    name: 'Important Topics',
+    slug: 'important-topics',
+    description: 'Key exam-oriented concepts, weightage topics, and module summaries.',
+    icon_name: 'Bookmark',
+    display_order: 2,
+  },
+  {
+    id: 3,
+    name: 'Syllabus',
+    slug: 'syllabus',
+    description: 'Official KTU 2024 Scheme curriculum breakdown and module structure.',
+    icon_name: 'BookOpen',
+    display_order: 3,
+  },
+];
+
 const RESOURCE_TYPE_CONFIG: Record<string, string[]> = {
-  theory: [
-    'notes',
-    'series-questions',
-    'model-questions',
-    'pyq',
-    'syllabus',
-    'youtube',
-    'assignments',
-    'reference-books',
-    'reference-videos',
-  ],
-  lab: [
-    'notes',
-    'syllabus',
-    'youtube',
-    'lab-record',
-    'viva-questions',
-    'practical-questions',
-  ],
-  project: [
-    'notes',
-    'series-questions',
-    'model-questions',
-    'pyq',
-    'syllabus',
-    'youtube',
-    'assignments',
-    'mini-projects',
-    'reference-books',
-    'reference-videos',
-  ],
+  theory: ['notes', 'important-topics', 'syllabus'],
+  lab: ['notes', 'important-topics', 'syllabus'],
+  project: ['notes', 'important-topics', 'syllabus'],
 };
 
-import { subjects as mockSubjects, resourceCategories as mockCategories } from '../../lib/mockData';
+import { subjects as mockSubjects } from '../../lib/mockData';
 
 export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, onNavigate }) => {
   const [subject, setSubject] = useState<Subject | null>(null);
-  const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
+  const [resourceTypes, setResourceTypes] = useState<ResourceType[]>(MVP_RESOURCE_TYPES);
   const [resources, setResources] = useState<Resource[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('notes');
   const [loading, setLoading] = useState(true);
@@ -134,18 +133,17 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
         }
 
         if (typesRes.data && typesRes.data.length > 0) {
-          setResourceTypes(typesRes.data);
-        } else {
-          setResourceTypes(
-            mockCategories.map((c, i) => ({
-              id: i + 1,
-              name: c.label,
-              slug: c.slug,
-              description: c.description,
-              icon_name: c.icon_name,
-              display_order: i + 1,
-            }))
+          // Merge with MVP categories so notes, important-topics, syllabus are present
+          const dbFiltered = typesRes.data.filter((rt) =>
+            rt.slug && ['notes', 'important-topics', 'syllabus', 'topics'].includes(rt.slug)
           );
+          if (dbFiltered.length > 0) {
+            setResourceTypes(dbFiltered);
+          } else {
+            setResourceTypes(MVP_RESOURCE_TYPES);
+          }
+        } else {
+          setResourceTypes(MVP_RESOURCE_TYPES);
         }
 
         if (resourcesRes.data && resourcesRes.data.length > 0) {
@@ -163,26 +161,21 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
     loadData();
   }, [subjectId]);
 
-  // Resource type slugs allowed for this subject's type, in display order.
+  // Allowed resource type slugs: ONLY notes, important-topics, syllabus
   const allowedSlugs = RESOURCE_TYPE_CONFIG[subject?.subject_type ?? 'theory'] ?? RESOURCE_TYPE_CONFIG.theory;
 
-  // Map slugs -> actual resource_type rows fetched from Supabase (skips any slug not present in DB).
-  const visibleResourceTypes = allowedSlugs
-    .map((slug) => resourceTypes.find((rt) => rt.slug === slug))
-    .filter((rt): rt is ResourceType => Boolean(rt));
+  // Filter visible resource types to the 3 MVP categories
+  const visibleResourceTypes = resourceTypes.filter((rt) => rt.slug && allowedSlugs.includes(rt.slug));
 
-  // Whenever the subject (and therefore its allowed category set) changes,
-  // reset the active tab to the first category in that set.
   useEffect(() => {
     if (!subject) return;
-    const firstSlug = (RESOURCE_TYPE_CONFIG[subject.subject_type ?? 'theory'] ?? RESOURCE_TYPE_CONFIG.theory)[0];
-    setActiveCategory(firstSlug ?? 'notes');
+    setActiveCategory('notes');
   }, [subject]);
 
   if (loading) {
     return (
-      <div className="w-full max-w-xl mx-auto px-6 py-32 text-center text-muted-foreground">
-        Loading subject...
+      <div className="w-full max-w-xl mx-auto px-6 py-32 text-center text-muted-foreground font-sans">
+        Loading subject resources...
       </div>
     );
   }
@@ -193,42 +186,65 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
         <h2 className="text-xl font-bold text-foreground">Subject not found</h2>
         <button
           onClick={() => onNavigate('semester')}
-          className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+          className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg cursor-pointer"
         >
-          Back to browser
+          Back to Semesters
         </button>
       </div>
     );
   }
 
-  const activeResources = resources.filter(
-    (res) => res.resource_types?.slug === activeCategory
-  );
+  const activeResources = resources.filter((res) => {
+    const slug = res.resource_types?.slug;
+    if (activeCategory === 'important-topics') {
+      return slug === 'important-topics' || slug === 'topics';
+    }
+    return slug === activeCategory;
+  });
 
-  const activeType = visibleResourceTypes.find((type) => type.slug === activeCategory);
+  const activeType = visibleResourceTypes.find((type) => type.slug === activeCategory) || MVP_RESOURCE_TYPES[0];
 
   return (
     <div className="w-full max-w-6xl mx-auto px-6 pt-24 pb-16">
 
-      <button
-        onClick={() => onNavigate('semester', {
-          initialSemester: subject.semester_id,
-          departmentId: subject.department_id,
-        })}
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8 group cursor-pointer"
-      >
-        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-        <span>Back to Semester</span>
-      </button>
+      {/* Navigation Header & Breadcrumb Hierarchy */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <button
+          onClick={() => onNavigate('semester', {
+            initialSemester: subject.semester_id,
+            departmentId: subject.department_id,
+          })}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group cursor-pointer"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          <span>Back to Semester</span>
+        </button>
 
+        {/* Clean Breadcrumbs */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
+          <span className="cursor-pointer hover:text-foreground" onClick={() => onNavigate('landing')}>Notes Hub</span>
+          <ChevronRight size={12} />
+          <span>CSE</span>
+          <ChevronRight size={12} />
+          <span>KTU 2024</span>
+          <ChevronRight size={12} />
+          <span className="cursor-pointer hover:text-foreground" onClick={() => onNavigate('semester', { initialSemester: subject.semester_id })}>
+            S{subject.semester_id}
+          </span>
+          <ChevronRight size={12} />
+          <span className="font-semibold text-primary">{subject.subject_code}</span>
+        </div>
+      </div>
+
+      {/* Subject Header Banner */}
       <div className="glass-panel p-6 sm:p-8 rounded-2xl mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6 border-border/40">
         <div>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-2.5 flex-wrap mb-2">
             <span className="text-xs font-mono font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
               {subject.subject_code}
             </span>
             <span className="text-xs text-primary font-bold font-mono px-2 py-0.5 rounded bg-primary/8 border border-primary/15">
-              CSE 2024 SCHEME • S{subject.semester_id}
+              KTU 2024 SCHEME • CSE • S{subject.semester_id}
             </span>
             {subject.credits && (
               <span className="text-xs text-muted-foreground font-semibold">
@@ -236,28 +252,29 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
               </span>
             )}
           </div>
-          <h1 className="font-sans font-bold text-3xl sm:text-[44px] tracking-tight leading-tight text-foreground mb-3">
+          <h1 className="font-sans font-bold text-3xl sm:text-[40px] tracking-tight leading-tight text-foreground mb-3">
             {subject.subject_name}
           </h1>
-          <p className="text-[17px] sm:text-[19px] font-normal text-muted-foreground max-w-2xl leading-relaxed">
-            {subject.description || 'No module details uploaded. Click below to inspect category resources.'}
+          <p className="text-sm sm:text-base font-normal text-muted-foreground max-w-2xl leading-relaxed font-sans">
+            {subject.description || 'Explore syllabus, module notes, and important topics for this course.'}
           </p>
         </div>
       </div>
 
+      {/* Resource Category Tabs & Cards Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
 
+        {/* Category Selector Side Menu (ONLY Module Notes, Important Topics, Syllabus) */}
         <div className="flex flex-col gap-1.5 lg:col-span-1">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2 font-mono">
             Resource Categories
           </div>
 
-          <div className="flex flex-row lg:flex-col gap-1 overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
+          <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
             {visibleResourceTypes.map((cat) => {
               const IconComp = iconMap[cat.icon_name ?? ''] || FileText;
               const slug = cat.slug ?? '';
               const isActive = activeCategory === slug;
-              const count = resources.filter((res) => res.resource_types?.slug === slug).length;
 
               return (
                 <button
@@ -270,14 +287,9 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <IconComp size={16} />
+                    <IconComp size={17} />
                     <span>{cat.name}</span>
                   </div>
-                  {count > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${isActive ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                      {count}
-                    </span>
-                  )}
                   {isActive && (
                     <motion.div
                       layoutId="activeCategoryIndicator"
@@ -291,56 +303,49 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
           </div>
         </div>
 
+        {/* Main Resource Cards Container */}
         <div className="lg:col-span-3">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-sans font-semibold text-[22px] sm:text-[26px] tracking-tight text-foreground">
-              {activeType?.name}
-            </h3>
+            <div>
+              <h3 className="font-sans font-bold text-2xl tracking-tight text-foreground mb-1">
+                {activeType?.name}
+              </h3>
+              <p className="text-xs text-muted-foreground font-sans">
+                {activeType?.description}
+              </p>
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
             <motion.div
               key={activeCategory}
-              initial={{ opacity: 0, x: 10 }}
+              initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
+              exit={{ opacity: 0, x: -8 }}
               transition={{ duration: 0.2 }}
               className="flex flex-col gap-4"
             >
               {activeResources.length > 0 ? (
                 activeResources.map((res, index) => {
                   const resourceUrl = res.youtube_url || res.file_url;
-                  const isYoutube = activeCategory === 'youtube';
-
-                  const isTargetNotesSubject = Boolean(
-                    activeCategory === 'notes' &&
-                    subject?.subject_name &&
-                    (
-                      subject.subject_name.toLowerCase().includes('machine learning') ||
-                      subject.subject_name.toLowerCase().includes('microcontroller') ||
-                      subject.subject_name.toLowerCase().includes('microprocessors and microcontrollers')
-                    )
-                  );
-
-                  const displayTitle = isTargetNotesSubject ? 'MODULE 1' : res.title;
 
                   return (
                     <motion.div
                       key={res.id}
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="glass-panel p-4 rounded-xl flex items-center justify-between gap-4 hover:border-primary/25 hover:shadow-md transition-all duration-300 group"
+                      transition={{ delay: index * 0.04 }}
+                      className="glass-panel p-4 sm:p-5 rounded-xl flex items-center justify-between gap-4 hover:border-primary/25 hover:shadow-md transition-all duration-300 group"
                     >
-                      <div className="flex items-start gap-3 min-w-0">
+                      <div className="flex items-start gap-3.5 min-w-0">
                         <div className="w-10 h-10 rounded-lg bg-primary/8 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                          {isYoutube ? <Youtube size={18} /> : <FileText size={18} />}
+                          <FileText size={19} />
                         </div>
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h4 className={`font-sans tracking-tight text-foreground leading-tight truncate group-hover:text-primary transition-colors ${isTargetNotesSubject ? 'font-bold text-base sm:text-[18px] tracking-wide' : 'font-semibold text-base sm:text-[18px]'}`}>
-                              {displayTitle}
+                            <h4 className="font-sans font-bold text-base text-foreground tracking-tight group-hover:text-primary transition-colors">
+                              {res.title}
                             </h4>
                             {res.is_verified && (
                               <span className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
@@ -354,42 +359,38 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
                             {res.modules?.module_no && <span>Module {res.modules.module_no}</span>}
                             {res.file_size && <span>• {res.file_size}</span>}
                             {res.file_type && <span>• {res.file_type}</span>}
-                            {res.download_count != null && (
-                              <span>• {res.download_count} views</span>
-                            )}
                           </div>
                         </div>
                       </div>
 
-                      {resourceUrl && (
+                      {resourceUrl ? (
                         <a
                           href={resourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-3 py-2 rounded-lg bg-muted text-foreground hover:bg-primary hover:text-primary-foreground text-xs font-semibold flex items-center gap-1.5 transition-colors duration-200 cursor-pointer shrink-0"
+                          className="px-3.5 py-2 rounded-lg bg-muted text-foreground hover:bg-primary hover:text-primary-foreground text-xs font-semibold flex items-center gap-1.5 transition-colors duration-200 cursor-pointer shrink-0"
                         >
-                          {isYoutube ? (
-                            <>
-                              <span>Watch</span>
-                              <ExternalLink size={13} />
-                            </>
-                          ) : (
-                            <>
-                              <span>Download</span>
-                              <Download size={13} />
-                            </>
-                          )}
+                          <span>Download</span>
+                          <Download size={13} />
                         </a>
+                      ) : (
+                        <span className="text-xs font-semibold text-muted-foreground/60 px-3 py-1.5 rounded bg-muted/40">
+                          Available Soon
+                        </span>
                       )}
                     </motion.div>
                   );
                 })
               ) : (
-                <div className="py-16 text-center glass-panel rounded-2xl flex flex-col items-center justify-center border-dashed border-2">
+                <div className="py-16 text-center glass-panel rounded-2xl flex flex-col items-center justify-center border-dashed border-2 border-border/40">
                   <Info size={32} className="text-muted-foreground/50 mb-3 stroke-[1.5]" />
-                  <h4 className="font-semibold text-sm text-foreground mb-1">No uploads yet</h4>
-                  <p className="text-xs text-muted-foreground max-w-xs">
-                    We don't have any resources in this category yet. Students or administrators will contribute soon.
+                  <h4 className="font-sans font-bold text-sm text-foreground mb-1">
+                    {activeCategory === 'notes' && 'No module notes available yet'}
+                    {activeCategory === 'important-topics' && 'No important topics available yet'}
+                    {activeCategory === 'syllabus' && 'Syllabus not available yet'}
+                  </h4>
+                  <p className="text-xs text-muted-foreground max-w-xs font-sans">
+                    Resources for this section are currently being verified and will be published shortly.
                   </p>
                 </div>
               )}
