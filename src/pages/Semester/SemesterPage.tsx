@@ -1,29 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
-import type { Semester, Subject } from '../../types/academic.types';
-import { MVP_CONFIG } from '../../lib/config';
+import { MVP_CONFIG, CSE_SUBJECTS_2024, type SubjectDefinition } from '../../lib/config';
+import { SemesterTransition } from '../../components/common/SemesterTransition';
 
 import {
-  Calculator, Atom, FlaskConical, PenTool, Code, Wrench, Heart,
-  MessageSquare, Globe, Lightbulb, Terminal, Binary, Cpu,
-  Database, FolderOpen, TrendingUp, ShieldAlert, Server,
-  Layers, Network, Brain, LineChart, FolderKanban, ShieldCheck,
-  Cloud, Infinity, Briefcase, FolderSearch, Rocket, Presentation,
-  UserCheck, Bot, ArrowRight, ArrowLeft, GraduationCap, BookOpen
+  Calculator, Atom, FlaskConical, PenTool, Code, Heart,
+  MessageSquare, Globe, Cpu, Database, FolderOpen, TrendingUp,
+  ShieldCheck, Layers, Network, Brain, ArrowRight, ArrowLeft,
+  GraduationCap, BookOpen, ChevronRight, Zap
 } from 'lucide-react';
 
-import { subjects as mockSubjects } from '../../lib/mockData';
-
-const FALLBACK_DEPARTMENT_ID = MVP_CONFIG.department.id; // 1 (CSE)
-
 const iconMap: Record<string, React.ComponentType<any>> = {
-  Calculator, Atom, FlaskConical, PenTool, Code, Wrench, Heart,
-  MessageSquare, Globe, Lightbulb, Terminal, Binary, Cpu,
-  Database, FolderOpen, TrendingUp, ShieldAlert, Server,
-  Layers, Network, Brain, LineChart, FolderKanban, ShieldCheck,
-  Cloud, Infinity, Briefcase, FolderSearch, Rocket, Presentation,
-  UserCheck, Bot
+  Calculator, Atom, FlaskConical, PenTool, Code, Heart,
+  MessageSquare, Globe, Cpu, Database, FolderOpen, TrendingUp,
+  ShieldCheck, Layers, Network, Brain, Zap
 };
 
 interface SemesterPageProps {
@@ -32,57 +23,42 @@ interface SemesterPageProps {
   departmentId?: number;
 }
 
-export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialSemester, departmentId }) => {
-  const activeDepartmentId = departmentId ?? FALLBACK_DEPARTMENT_ID;
+export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialSemester }) => {
+  const [selectedSemesterNo, setSelectedSemesterNo] = useState<number>(() => {
+    return initialSemester && MVP_CONFIG.activeSemesters.includes(initialSemester)
+      ? initialSemester
+      : MVP_CONFIG.activeSemesters[0];
+  });
 
-  const [selectedSemesterId, setSelectedSemesterId] = useState<number | null>(null);
-  const [semesters, setSemesters] = useState<Semester[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjects, setSubjects] = useState<SubjectDefinition[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
+  const [showTransition, setShowTransition] = useState(true);
+  const [transitionSem, setTransitionSem] = useState<number | null>(selectedSemesterNo);
+
+  // Trigger transition splash on semester switch
+  const handleSemesterChange = (semNum: number) => {
+    if (semNum === selectedSemesterNo) return;
+    setSelectedSemesterNo(semNum);
+    setTransitionSem(semNum);
+    setShowTransition(true);
+
+    setTimeout(() => {
+      setShowTransition(false);
+    }, 900);
+  };
 
   useEffect(() => {
-    const loadSemesters = async () => {
-      let semList: Semester[] = [];
-      try {
-        const { data, error } = await supabase
-          .from('semesters')
-          .select('*')
-          .order('semester_no');
+    // Initial transition trigger
+    setTransitionSem(selectedSemesterNo);
+    setShowTransition(true);
+    const timer = setTimeout(() => {
+      setShowTransition(false);
+    }, 900);
 
-        if (!error && data && data.length > 0) {
-          semList = data;
-        }
-      } catch (err) {
-        console.error('Error fetching semesters:', err);
-      }
-
-      if (semList.length === 0) {
-        semList = Array.from({ length: 8 }, (_, i) => ({
-          id: i + 1,
-          semester_no: i + 1,
-          name: `Semester ${i + 1}`,
-        }));
-      }
-
-      setSemesters(semList);
-
-      // Default target semester (must be one of MVP_CONFIG.activeSemesters)
-      const requested = initialSemester && MVP_CONFIG.activeSemesters.includes(initialSemester)
-        ? initialSemester
-        : MVP_CONFIG.activeSemesters[0]; // Default to S1 or S3
-
-      const match = semList.find(
-        (sem) => sem.id === requested || sem.semester_no === requested
-      );
-      setSelectedSemesterId(match?.id ?? semList[0]?.id ?? 1);
-    };
-
-    loadSemesters();
-  }, [initialSemester]);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
-    if (!selectedSemesterId) return;
-
     const loadSubjects = async () => {
       setLoadingSubjects(true);
 
@@ -90,81 +66,263 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
         const { data, error } = await supabase
           .from('subjects')
           .select('*')
-          .eq('semester_id', selectedSemesterId)
-          .eq('department_id', activeDepartmentId)
+          .eq('semester_id', selectedSemesterNo)
+          .eq('department_id', MVP_CONFIG.department.id)
           .order('subject_code');
 
         if (!error && data && data.length > 0) {
-          setSubjects(data);
-          setLoadingSubjects(false);
-          return;
+          // Filter out lab subjects and Constitution of India MOOC
+          const filteredDb = data.filter((s) => {
+            const code = s.subject_code?.toUpperCase() || '';
+            const type = s.subject_type?.toLowerCase() || '';
+            if (type === 'lab' || code.includes('CSL') || code.includes('ESL') || code.includes('PSL')) return false;
+            if (code === 'UCHUM506') return false; // Exclude Constitution of India MOOC
+            return true;
+          });
+
+          if (filteredDb.length > 0) {
+            // Map DB subjects with fallback to CSE_SUBJECTS_2024
+            const mapped: SubjectDefinition[] = filteredDb.map((s) => {
+              const matchedStatic = CSE_SUBJECTS_2024.find((c) => c.code === s.subject_code || c.id === s.slug);
+              return {
+                id: String(s.id),
+                code: s.subject_code,
+                name: s.subject_name,
+                credits: s.credits || matchedStatic?.credits || 3,
+                semesterId: s.semester_id,
+                description: s.description || matchedStatic?.description || '',
+                iconName: s.icon_name || matchedStatic?.iconName || 'Code',
+                category: matchedStatic?.category || 'Theory',
+                orGroupId: matchedStatic?.orGroupId,
+                orGroupTitle: matchedStatic?.orGroupTitle,
+              };
+            });
+            setSubjects(mapped);
+            setLoadingSubjects(false);
+            return;
+          }
         }
       } catch (err) {
-        console.error('Error fetching subjects:', err);
+        console.error('Error fetching subjects from Supabase:', err);
       }
 
-      // Safe fallback when Supabase is unconfigured or returns no records
-      const fallback = mockSubjects
-        .filter((s) => s.semester_id === selectedSemesterId)
-        .map((s, idx) => ({
-          id: idx + 1 + (selectedSemesterId * 100),
-          department_id: activeDepartmentId,
-          semester_id: selectedSemesterId,
-          subject_code: s.code,
-          subject_name: s.name,
-          slug: s.slug || null,
-          description: s.description || null,
-          credits: s.credits || 3,
-          icon_name: s.icon_name || null,
-          subject_type: 'theory' as const,
-        }));
-
+      // Authoritative fallback dataset for KTU 2024 CSE S1, S3, S5
+      const fallback = CSE_SUBJECTS_2024.filter((s) => s.semesterId === selectedSemesterNo);
       setSubjects(fallback);
       setLoadingSubjects(false);
     };
 
     loadSubjects();
-  }, [selectedSemesterId, activeDepartmentId]);
+  }, [selectedSemesterNo]);
 
-  // Filter semester tabs to ONLY active MVP semesters (S1, S3, S5) for the active user interface
-  const visibleSemesters = semesters.filter((sem) =>
-    MVP_CONFIG.activeSemesters.includes(sem.semester_no)
-  );
+  // Group subjects by OR groups
+  const renderSubjectGrid = () => {
+    if (loadingSubjects) {
+      return (
+        <div className="col-span-full py-20 text-center text-muted-foreground text-sm font-sans">
+          Preparing your subjects...
+        </div>
+      );
+    }
 
-  const activeSemesterNo = semesters.find((sem) => sem.id === selectedSemesterId)?.semester_no;
+    if (subjects.length === 0) {
+      return (
+        <div className="col-span-full py-16 text-center glass-panel rounded-2xl flex flex-col items-center justify-center">
+          <BookOpen size={40} className="text-muted-foreground/60 mb-4 stroke-[1.5]" />
+          <h3 className="font-sans font-semibold text-base text-foreground mb-1">No subjects available</h3>
+          <p className="text-xs text-muted-foreground max-w-xs">
+            We are currently updating course modules for S{selectedSemesterNo}.
+          </p>
+        </div>
+      );
+    }
+
+    // Process OR groups vs standalone subjects
+    const processedNodes: React.ReactNode[] = [];
+    const handledOrGroups = new Set<string>();
+
+    subjects.forEach((subject) => {
+      if (subject.orGroupId) {
+        if (handledOrGroups.has(subject.orGroupId)) return; // Already processed in pair
+        handledOrGroups.add(subject.orGroupId);
+
+        const groupSubjects = subjects.filter((s) => s.orGroupId === subject.orGroupId);
+
+        processedNodes.push(
+          <div
+            key={subject.orGroupId}
+            className="col-span-full glass-panel p-5 sm:p-7 rounded-3xl border border-primary/25 relative overflow-hidden bg-primary/5 dark:bg-primary/5 my-2"
+          >
+            <div className="flex items-center gap-2 mb-5">
+              <span className="px-3 py-1 rounded-full bg-primary/15 text-primary text-[10px] font-mono font-bold tracking-wider uppercase border border-primary/20">
+                OR ELECTIVE CHOICE
+              </span>
+              <span className="text-xs font-semibold text-foreground font-sans">
+                {subject.orGroupTitle || 'Select either subject choice'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative">
+              {groupSubjects.map((sub, idx) => {
+                const SubIcon = iconMap[sub.iconName] || Code;
+                return (
+                  <React.Fragment key={sub.code}>
+                    {idx > 0 && (
+                      <div className="md:hidden flex justify-center my-1">
+                        <span className="px-3 py-1 rounded-full bg-primary text-primary-foreground font-mono font-bold text-xs shadow-md">
+                          OR
+                        </span>
+                      </div>
+                    )}
+                    <motion.div
+                      whileHover={{ y: -4, scale: 1.01 }}
+                      onClick={() => onNavigate('dashboard', { subjectId: sub.id, subjectCode: sub.code, subjectName: sub.name, credits: sub.credits, semId: selectedSemesterNo })}
+                      className="glass-panel p-6 rounded-2xl flex flex-col justify-between hover:border-primary/50 shadow-sm transition-all duration-300 group cursor-pointer bg-background/80 dark:bg-background/60"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                            <SubIcon size={19} className="stroke-[2.2]" />
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-2.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                              {sub.code}
+                            </span>
+                            <span className="text-[10px] font-sans font-semibold text-primary px-2 py-0.5 rounded bg-primary/8">
+                              {sub.credits} Credits
+                            </span>
+                          </div>
+                        </div>
+
+                        <h3 className="font-sans font-bold text-lg sm:text-xl tracking-tight text-foreground mb-2 group-hover:text-primary transition-colors">
+                          {sub.name}
+                        </h3>
+
+                        <p className="text-xs sm:text-sm font-normal text-muted-foreground leading-relaxed mb-6 line-clamp-3">
+                          {sub.description}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs font-semibold text-primary mt-auto pt-3 border-t border-border/20">
+                        <span>Explore Subject</span>
+                        <div className="w-7 h-7 rounded-lg bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground flex items-center justify-center transition-all duration-300">
+                          <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform stroke-[2.5]" />
+                        </div>
+                      </div>
+                    </motion.div>
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Desktop OR Badge Separator */}
+              {groupSubjects.length > 1 && (
+                <div className="hidden md:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-primary text-primary-foreground font-mono font-bold text-xs items-center justify-center border-4 border-background shadow-lg">
+                  OR
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      } else {
+        // Regular Standalone Subject Card
+        const SubIcon = iconMap[subject.iconName] || Code;
+        processedNodes.push(
+          <motion.div
+            key={subject.code}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ y: -4, scale: 1.01 }}
+            onClick={() => onNavigate('dashboard', { subjectId: subject.id, subjectCode: subject.code, subjectName: subject.name, credits: subject.credits, semId: selectedSemesterNo })}
+            className="glass-panel p-6 rounded-2xl flex flex-col justify-between hover:border-primary/45 shadow-sm transition-all duration-300 group cursor-pointer"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/8 text-primary flex items-center justify-center">
+                  <SubIcon size={19} className="stroke-[2.2]" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-2.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/40">
+                    {subject.code}
+                  </span>
+                  <span className="text-[10px] font-sans font-semibold text-primary px-2 py-0.5 rounded bg-primary/8">
+                    {subject.credits} Credits
+                  </span>
+                </div>
+              </div>
+
+              <h3 className="font-sans font-bold text-lg sm:text-xl tracking-tight text-foreground mb-2.5 group-hover:text-primary transition-colors">
+                {subject.name}
+              </h3>
+
+              <p className="text-xs sm:text-sm font-normal text-muted-foreground/85 leading-relaxed mb-6 line-clamp-3">
+                {subject.description}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between text-xs font-semibold text-primary mt-auto pt-3 border-t border-border/20">
+              <span>Explore Subject</span>
+              <div className="w-7 h-7 rounded-lg bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground flex items-center justify-center transition-all duration-300">
+                <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform stroke-[2.5]" />
+              </div>
+            </div>
+          </motion.div>
+        );
+      }
+    });
+
+    return processedNodes;
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto px-6 pt-24 pb-16">
 
-      <button
-        onClick={() => onNavigate('landing')}
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8 group cursor-pointer"
-      >
-        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-        <span>Back to Home</span>
-      </button>
+      {/* Reusable Animated Semester Transition Overlay */}
+      <SemesterTransition isVisible={showTransition} semesterNum={transitionSem} />
 
+      {/* Navigation Header & Breadcrumb Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <button
+          onClick={() => onNavigate('landing')}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group cursor-pointer"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          <span>Back to Semesters</span>
+        </button>
+
+        {/* Clean Breadcrumb Hierarchy */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
+          <span className="cursor-pointer hover:text-foreground" onClick={() => onNavigate('landing')}>Notes Hub</span>
+          <ChevronRight size={12} />
+          <span>CSE</span>
+          <ChevronRight size={12} />
+          <span>KTU 2024</span>
+          <ChevronRight size={12} />
+          <span className="font-semibold text-primary">S{selectedSemesterNo}</span>
+        </div>
+      </div>
+
+      {/* Page Header */}
       <div className="mb-10">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/8 border border-primary/20 text-[11px] font-semibold text-primary mb-3">
           <GraduationCap size={12} />
-          <span>{MVP_CONFIG.department.fullName} • {MVP_CONFIG.scheme}</span>
+          <span>KTU 2024 SCHEME • COMPUTER SCIENCE & ENGINEERING</span>
         </div>
         <h1 className="font-sans font-bold text-3xl sm:text-[44px] tracking-tight leading-tight text-foreground mb-3">
-          Academic Resource Browser
+          Semester {selectedSemesterNo} Subjects
         </h1>
         <p className="text-base sm:text-[18px] font-normal text-muted-foreground max-w-xl leading-relaxed">
-          Select S1, S3, or S5 below to explore subjects, syllabus, notes, question papers, and lab manuals.
+          Select a subject below to explore its notes, previous year questions, lab manuals, and video lectures.
         </p>
       </div>
 
-      {/* Semester Tab Switcher (S1, S3, S5) */}
+      {/* Semester Tab Selector (S1, S3, S5) */}
       <div className="w-full overflow-x-auto pb-4 mb-10 flex gap-2 border-b border-border/20 no-scrollbar">
-        {visibleSemesters.map((sem) => {
-          const isActive = selectedSemesterId === sem.id;
+        {MVP_CONFIG.activeSemesters.map((semNum) => {
+          const isActive = selectedSemesterNo === semNum;
           return (
             <button
-              key={sem.id}
-              onClick={() => setSelectedSemesterId(sem.id)}
+              key={semNum}
+              onClick={() => handleSemesterChange(semNum)}
               className={`relative px-6 py-3.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-300 flex items-center gap-2 cursor-pointer ${
                 isActive
                   ? 'text-primary'
@@ -172,7 +330,7 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
               }`}
             >
               <GraduationCap size={16} />
-              <span>{sem.name}</span>
+              <span>Semester {semNum}</span>
               {isActive && (
                 <motion.div
                   layoutId="activeSemesterTab"
@@ -185,81 +343,23 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
         })}
       </div>
 
-      {/* Subject Cards Grid */}
+      {/* Dynamic Subjects Grid with Staggered Transition */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={selectedSemesterId ?? 'none'}
+          key={selectedSemesterNo}
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -15 }}
           transition={{ duration: 0.35, ease: 'easeOut' }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          {loadingSubjects ? (
-            <div className="col-span-full py-16 text-center text-muted-foreground text-sm">
-              Loading subjects...
-            </div>
-          ) : subjects.length > 0 ? (
-            subjects.map((subject, index) => {
-              const SubjectIcon = iconMap[subject.icon_name ?? ''] || Code;
-              return (
-                <motion.div
-                  key={subject.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ y: -4 }}
-                  onClick={() => onNavigate('dashboard', { subjectId: subject.id, semId: selectedSemesterId })}
-                  className="glass-panel p-6 rounded-2xl flex flex-col justify-between hover:border-primary/40 shadow-sm transition-all duration-300 group cursor-pointer"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-9 h-9 rounded-lg bg-primary/8 text-primary flex items-center justify-center">
-                        <SubjectIcon size={18} className="stroke-[2.2]" />
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                          {subject.subject_code}
-                        </span>
-                        {subject.credits && (
-                          <span className="text-[10px] font-sans font-semibold text-primary px-2 py-0.5 rounded bg-primary/8">
-                            {subject.credits} Credits
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <h3 className="font-sans font-semibold text-xl sm:text-[23px] tracking-tight text-foreground mb-3 group-hover:text-primary transition-colors">
-                      {subject.subject_name}
-                    </h3>
-
-                    <p className="text-[15px] sm:text-[17px] font-normal text-muted-foreground/80 leading-relaxed mb-6 line-clamp-3">
-                      {subject.description || 'No description available for this module yet. Explore official documents for content outlines.'}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs font-semibold text-primary mt-auto">
-                    <span>Explore Resources</span>
-                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </motion.div>
-              );
-            })
-          ) : (
-            <div className="col-span-full py-16 text-center glass-panel rounded-2xl flex flex-col items-center justify-center">
-              <BookOpen size={40} className="text-muted-foreground/60 mb-4 stroke-[1.5]" />
-              <h3 className="font-display font-semibold text-md text-foreground mb-1">No registered subjects</h3>
-              <p className="text-xs text-muted-foreground max-w-xs">
-                We are currently uploading study materials for S{activeSemesterNo ?? '—'} modules under KTU 2024 Scheme.
-              </p>
-            </div>
-          )}
+          {renderSubjectGrid()}
         </motion.div>
       </AnimatePresence>
 
-      <div className="mt-12 text-center pt-6 border-t border-border/15">
+      <div className="mt-14 text-center pt-6 border-t border-border/15">
         <p className="text-xs text-muted-foreground/75 font-sans">
-          Showing active semesters (S1, S3, S5) for Computer Science & Engineering ({MVP_CONFIG.scheme}). Additional semesters will be made available in future releases.
+          Showing official KTU 2024 Scheme subjects for S{selectedSemesterNo} Computer Science & Engineering.
         </p>
       </div>
 

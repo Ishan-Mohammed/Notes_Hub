@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import type { Resource, ResourceType, Subject } from '../../types/academic.types';
+import { CSE_SUBJECTS_2024 } from '../../lib/config';
 import {
   ArrowLeft, FileText, History, Bookmark, Layers,
   BookOpen, Terminal, Youtube, ClipboardList,
@@ -93,22 +94,38 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
         if (subjectRes.data) {
           setSubject(subjectRes.data);
         } else {
-          // Fallback lookup from mockData
-          const fallbackMatch =
-            mockSubjects.find((s, idx) => (idx + 1 + (s.semester_id * 100)) === subjectId) ||
-            mockSubjects[0];
+          // Fallback lookup from CSE_SUBJECTS_2024 or mockSubjects
+          const staticMatch = CSE_SUBJECTS_2024.find(
+            (s) => String(s.id) === String(subjectId) || s.code === String(subjectId)
+          );
+          const mockMatch = mockSubjects.find(
+            (s, idx) => (idx + 1 + (s.semester_id * 100)) === Number(subjectId)
+          );
 
-          if (fallbackMatch) {
+          if (staticMatch) {
             setSubject({
-              id: subjectId,
+              id: typeof subjectId === 'number' ? subjectId : 1,
               department_id: 1,
-              semester_id: fallbackMatch.semester_id,
-              subject_code: fallbackMatch.code,
-              subject_name: fallbackMatch.name,
-              slug: fallbackMatch.slug || null,
-              description: fallbackMatch.description || null,
-              credits: fallbackMatch.credits || 3,
-              icon_name: fallbackMatch.icon_name || null,
+              semester_id: staticMatch.semesterId,
+              subject_code: staticMatch.code,
+              subject_name: staticMatch.name,
+              slug: staticMatch.id,
+              description: staticMatch.description,
+              credits: staticMatch.credits,
+              icon_name: staticMatch.iconName,
+              subject_type: 'theory',
+            });
+          } else if (mockMatch) {
+            setSubject({
+              id: Number(subjectId) || 1,
+              department_id: 1,
+              semester_id: mockMatch.semester_id,
+              subject_code: mockMatch.code,
+              subject_name: mockMatch.name,
+              slug: mockMatch.slug || null,
+              description: mockMatch.description || null,
+              credits: mockMatch.credits || 3,
+              icon_name: mockMatch.icon_name || null,
               subject_type: 'theory',
             });
           } else {
