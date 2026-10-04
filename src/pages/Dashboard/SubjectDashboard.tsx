@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import type { Resource, ResourceType, Subject } from '../../types/academic.types';
-import { CSE_SUBJECTS_2024, getSubjectByIdOrCode } from '../../lib/config';
+import { getSubjectByIdOrCode } from '../../lib/config';
 import {
   ArrowLeft, FileText, History, Bookmark, Layers,
   BookOpen, Terminal, Youtube, ClipboardList,
@@ -324,7 +324,13 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
               transition={{ duration: 0.2 }}
               className="flex flex-col gap-4"
             >
-              {activeResources.length > 0 ? (
+              {loadingResources ? (
+                <div className="py-16 text-center glass-panel rounded-2xl flex flex-col items-center justify-center">
+                  <p className="text-xs text-muted-foreground font-sans">
+                    Loading subject resources...
+                  </p>
+                </div>
+              ) : activeResources.length > 0 ? (
                 activeResources.map((res, index) => {
                   const resourceUrl = res.youtube_url || res.file_url;
 
