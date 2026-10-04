@@ -4,14 +4,14 @@ import { supabase } from '../../lib/supabase';
 import { MVP_CONFIG, CSE_SUBJECTS_2024, type SubjectDefinition } from '../../lib/config';
 
 import {
-  Calculator, Atom, FlaskConical, PenTool, Code, Heart,
+  Calculator, Atom, FlaskConical, PenTool, Code,
   MessageSquare, Globe, Cpu, Database, FolderOpen, TrendingUp,
   ShieldCheck, Layers, Network, Brain, ArrowRight, ArrowLeft,
   GraduationCap, BookOpen, ChevronRight, Zap, Bot
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ComponentType<any>> = {
-  Calculator, Atom, FlaskConical, PenTool, Code, Heart,
+  Calculator, Atom, FlaskConical, PenTool, Code,
   MessageSquare, Globe, Cpu, Database, FolderOpen, TrendingUp,
   ShieldCheck, Layers, Network, Brain, Zap, Bot
 };
@@ -23,20 +23,12 @@ interface SemesterPageProps {
 }
 
 export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialSemester }) => {
-  const [selectedSemesterNo, setSelectedSemesterNo] = useState<number>(() => {
-    return initialSemester && MVP_CONFIG.activeSemesters.includes(initialSemester)
-      ? initialSemester
-      : MVP_CONFIG.activeSemesters[0];
-  });
+  const selectedSemesterNo = initialSemester && MVP_CONFIG.activeSemesters.includes(initialSemester)
+    ? initialSemester
+    : MVP_CONFIG.activeSemesters[0];
 
   const [subjects, setSubjects] = useState<SubjectDefinition[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
-
-  // Fast, direct semester tab switching without artificial loading screens
-  const handleSemesterChange = (semNum: number) => {
-    if (semNum === selectedSemesterNo) return;
-    setSelectedSemesterNo(semNum);
-  };
 
   useEffect(() => {
     const loadSubjects = async () => {
@@ -51,12 +43,13 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
           .order('subject_code');
 
         if (!error && data && data.length > 0) {
-          // Filter out lab subjects and Constitution of India MOOC
+          // Filter out lab subjects, Constitution of India MOOC, UCHWT127 and UCHUT128
           const filteredDb = data.filter((s) => {
             const code = s.subject_code?.toUpperCase() || '';
             const type = s.subject_type?.toLowerCase() || '';
             if (type === 'lab' || code.includes('CSL') || code.includes('ESL') || code.includes('PSL')) return false;
             if (code === 'UCHUM506') return false; // Exclude Constitution of India MOOC
+            if (code === 'UCHWT127' || code === 'UCHUT128') return false; // Exclude Health & Wellness and Life Skills
             return true;
           });
 
@@ -95,12 +88,12 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
     loadSubjects();
   }, [selectedSemesterNo]);
 
-  // Render subject grid with systematic height alignment & OR choice pairing
+  // Render subject grid with systematic equal height alignment & OR choice pairing
   const renderSubjectGrid = () => {
     if (loadingSubjects) {
       return (
         <div className="col-span-full py-16 text-center text-muted-foreground text-sm font-sans">
-          Loading subjects...
+          Loading Semester {selectedSemesterNo} subjects...
         </div>
       );
     }
@@ -111,7 +104,7 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
           <BookOpen size={40} className="text-muted-foreground/60 mb-4 stroke-[1.5]" />
           <h3 className="font-sans font-semibold text-base text-foreground mb-1">No subjects available</h3>
           <p className="text-xs text-muted-foreground max-w-xs">
-            We are currently updating course modules for S{selectedSemesterNo}.
+            We are currently updating course modules for Semester {selectedSemesterNo}.
           </p>
         </div>
       );
@@ -177,11 +170,13 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
                           </div>
                         </div>
 
-                        <h3 className="font-sans font-bold text-lg sm:text-xl tracking-tight text-foreground mb-2.5 min-h-[3.25rem] flex items-center group-hover:text-primary transition-colors">
-                          {sub.name}
-                        </h3>
+                        <div className="min-h-[3.75rem] flex items-center mb-2.5">
+                          <h3 className="font-sans font-bold text-lg sm:text-xl tracking-tight text-foreground leading-snug group-hover:text-primary transition-colors">
+                            {sub.name}
+                          </h3>
+                        </div>
 
-                        <p className="text-xs sm:text-sm font-normal text-muted-foreground leading-relaxed mb-6 line-clamp-3 flex-grow">
+                        <p className="text-xs sm:text-sm font-normal text-muted-foreground leading-relaxed mb-6 line-clamp-3 flex-grow font-sans">
                           {sub.description}
                         </p>
                       </div>
@@ -233,11 +228,13 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
                 </div>
               </div>
 
-              <h3 className="font-sans font-bold text-lg sm:text-xl tracking-tight text-foreground mb-2.5 min-h-[3.25rem] flex items-center group-hover:text-primary transition-colors">
-                {subject.name}
-              </h3>
+              <div className="min-h-[3.75rem] flex items-center mb-2.5">
+                <h3 className="font-sans font-bold text-lg sm:text-xl tracking-tight text-foreground leading-snug group-hover:text-primary transition-colors">
+                  {subject.name}
+                </h3>
+              </div>
 
-              <p className="text-xs sm:text-sm font-normal text-muted-foreground/85 leading-relaxed mb-6 line-clamp-3 flex-grow">
+              <p className="text-xs sm:text-sm font-normal text-muted-foreground/85 leading-relaxed mb-6 line-clamp-3 flex-grow font-sans">
                 {subject.description}
               </p>
             </div>
@@ -259,7 +256,7 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
   return (
     <div className="w-full max-w-6xl mx-auto px-6 pt-24 pb-16">
 
-      {/* Navigation Header & Breadcrumbs */}
+      {/* Navigation Header & Breadcrumb Hierarchy */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <button
           onClick={() => onNavigate('landing')}
@@ -281,7 +278,7 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
         </div>
       </div>
 
-      {/* Page Title & Header */}
+      {/* Page Title & Header (Strictly displays ONLY selected semester details) */}
       <div className="mb-10">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/8 border border-primary/20 text-[11px] font-semibold text-primary mb-3">
           <GraduationCap size={12} />
@@ -291,47 +288,19 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
           Semester {selectedSemesterNo} Subjects
         </h1>
         <p className="text-base sm:text-[18px] font-normal text-muted-foreground max-w-xl leading-relaxed font-sans">
-          Choose a subject to explore its academic resources, syllabus, module notes, and important topics.
+          Explore the academic resources available for Semester {selectedSemesterNo}. Select a subject to view syllabus, module notes, and important topics.
         </p>
       </div>
 
-      {/* Semester Tab Switcher (S1, S3, S5) */}
-      <div className="w-full overflow-x-auto pb-4 mb-10 flex gap-2 border-b border-border/20 no-scrollbar">
-        {MVP_CONFIG.activeSemesters.map((semNum) => {
-          const isActive = selectedSemesterNo === semNum;
-          return (
-            <button
-              key={semNum}
-              onClick={() => handleSemesterChange(semNum)}
-              className={`relative px-6 py-3.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-300 flex items-center gap-2 cursor-pointer ${
-                isActive
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
-              }`}
-            >
-              <GraduationCap size={16} />
-              <span>Semester {semNum}</span>
-              {isActive && (
-                <motion.div
-                  layoutId="activeSemesterTab"
-                  className="absolute inset-0 bg-primary/10 border-b-2 border-primary rounded-xl -z-10"
-                  transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-                />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Subject Cards Grid (Systematic Equal Height Alignment) */}
+      {/* Subject Cards Grid (Systematic Equal Height Alignment & Grid Fit) */}
       <AnimatePresence mode="wait">
         <motion.div
           key={selectedSemesterNo}
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch"
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch w-full"
         >
           {renderSubjectGrid()}
         </motion.div>
