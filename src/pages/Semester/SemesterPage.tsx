@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { MVP_CONFIG, CSE_SUBJECTS_2024, getSubjectsForSemester, type SubjectDefinition } from '../../lib/config';
 
@@ -16,6 +16,9 @@ const iconMap: Record<string, React.ComponentType<any>> = {
   ShieldCheck, Layers, Network, Brain, Zap, Bot
 };
 
+// Global in-memory cache to store processed DB subjects per semester for instant retrieval
+const semesterSubjectsCache = new Map<number, SubjectDefinition[]>();
+
 interface SemesterPageProps {
   onNavigate: (page: string, params?: any) => void;
   initialSemester?: number;
@@ -27,16 +30,22 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
     ? initialSemester
     : MVP_CONFIG.activeSemesters[0];
 
-  // Synchronously initialize subjects from local static config for INSTANT (0ms) render
-  const initialLocalSubjects = getSubjectsForSemester(selectedSemesterNo);
+  // Synchronously resolve subjects from cache or local static config for BLINK-SPEED (0ms) render
+  const initialLocalSubjects = useMemo(() => {
+    return semesterSubjectsCache.get(selectedSemesterNo) || getSubjectsForSemester(selectedSemesterNo);
+  }, [selectedSemesterNo]);
+
   const [subjects, setSubjects] = useState<SubjectDefinition[]>(initialLocalSubjects);
   const [loadingSubjects, setLoadingSubjects] = useState(initialLocalSubjects.length === 0);
 
   useEffect(() => {
-    // If local static subjects exist, ensure state is updated synchronously on semester switch
-    const localSubs = getSubjectsForSemester(selectedSemesterNo);
-    setSubjects(localSubs);
+    // If cached or local static subjects exist, update state synchronously
+    const cachedOrLocal = semesterSubjectsCache.get(selectedSemesterNo) || getSubjectsForSemester(selectedSemesterNo);
+    setSubjects(cachedOrLocal);
     setLoadingSubjects(false);
+
+    // Skip network request if already cached in memory
+    if (semesterSubjectsCache.has(selectedSemesterNo)) return;
 
     // Fetch database overrides/updates in the background silently
     const loadSubjectsFromDb = async () => {
@@ -74,6 +83,7 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
                 orGroupTitle: matchedStatic?.orGroupTitle,
               };
             });
+            semesterSubjectsCache.set(selectedSemesterNo, mapped);
             setSubjects(mapped);
           }
         }
@@ -85,8 +95,8 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
     loadSubjectsFromDb();
   }, [selectedSemesterNo]);
 
-  // Render subject grid with systematic equal height alignment & OR choice pairing
-  const renderSubjectGrid = () => {
+  // Render subject grid with systematic equal height alignment & OR choice pairing (memoized)
+  const renderedSubjectGrid = useMemo(() => {
     if (loadingSubjects) {
       return (
         <div className="col-span-full py-16 text-center text-muted-foreground text-sm font-sans">
@@ -204,7 +214,7 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
         processedNodes.push(
           <motion.div
             key={subject.code}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ y: -4, scale: 1.01 }}
             onClick={() => onNavigate('dashboard', { subjectId: subject.id, subjectCode: subject.code, subjectName: subject.name, credits: subject.credits, semId: selectedSemesterNo })}
@@ -248,7 +258,7 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
     });
 
     return processedNodes;
-  };
+  }, [subjects, loadingSubjects, selectedSemesterNo, onNavigate]);
 
   return (
     <div className="w-full max-w-6xl mx-auto px-6 pt-24 pb-16">
@@ -289,19 +299,10 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
         </p>
       </div>
 
-      {/* Subject Cards Grid (Systematic Equal Height Alignment & Grid Fit) */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={selectedSemesterNo}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch w-full"
-        >
-          {renderSubjectGrid()}
-        </motion.div>
-      </AnimatePresence>
+      {/* Subject Cards Grid (Instant Blink-Speed Render) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch w-full">
+        {renderedSubjectGrid}
+      </div>
 
       <div className="mt-14 text-center pt-6 border-t border-border/15">
         <p className="text-xs text-muted-foreground/75 font-sans">
