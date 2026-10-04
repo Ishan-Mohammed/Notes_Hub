@@ -210,6 +210,9 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
             <span className="text-xs font-mono font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
               {subject.subject_code}
             </span>
+            <span className="text-xs text-primary font-bold font-mono px-2 py-0.5 rounded bg-primary/8 border border-primary/15">
+              CSE 2024 SCHEME • S{subject.semester_id}
+            </span>
             {subject.credits && (
               <span className="text-xs text-muted-foreground font-semibold">
                 • {subject.credits} Credits Module

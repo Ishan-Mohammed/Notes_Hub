@@ -8,41 +8,40 @@ interface NavbarProps {
   currentPage: string;
 }
 
-// Id of the department grid section on LandingPage.tsx. Keep these two in sync.
+// Id of the semester section on LandingPage.tsx. Keep these in sync.
+const SEMESTERS_SECTION_ID = 'explore-semesters';
 const DEPARTMENTS_SECTION_ID = 'browse-departments';
 
 export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentPage }) => {
   const { theme, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
-  // 'resources' has no dedicated page, so currentPage can never match it and give it a
-  // persistent highlight. This gives it a brief highlight flash on click instead, so it
-  // still feels responsive rather than silently doing nothing visually.
   const [flashingValue, setFlashingValue] = useState<string | null>(null);
 
   const navItems = [
     { label: 'Home', value: 'landing', icon: Home },
-    { label: 'Resources', value: 'resources', icon: BookOpen }, // Scroll-only: jumps to the department grid on landing
+    { label: 'Semesters', value: 'semesters', icon: BookOpen }, // Scroll-only: jumps to the semester grid on landing
     { label: 'About', value: 'about', icon: Info },             // Real navigation: goes to the /about page
   ];
 
-  const scrollToDepartments = () => {
-    const el = document.getElementById(DEPARTMENTS_SECTION_ID);
+  const scrollToSemesters = () => {
+    const el = document.getElementById(SEMESTERS_SECTION_ID) || document.getElementById(DEPARTMENTS_SECTION_ID);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
     } else {
       // Not on the landing page — navigate there first, then scroll once it mounts.
       onNavigate('landing');
       setTimeout(() => {
-        document.getElementById(DEPARTMENTS_SECTION_ID)?.scrollIntoView({ behavior: 'smooth' });
+        const target = document.getElementById(SEMESTERS_SECTION_ID) || document.getElementById(DEPARTMENTS_SECTION_ID);
+        target?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     }
   };
 
   const handleNavClick = (value: string) => {
-    if (value === 'resources') {
-      setFlashingValue('resources');
+    if (value === 'semesters' || value === 'resources') {
+      setFlashingValue('semesters');
       setTimeout(() => setFlashingValue(null), 600);
-      scrollToDepartments();
+      scrollToSemesters();
     } else {
       onNavigate(value);
     }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { GraduationCap, Github } from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
 
 interface FooterProps {
   onNavigate: (page: string) => void;
@@ -29,25 +29,22 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             Home
           </button>
           <button 
-            onClick={() => onNavigate('landing')}
+            onClick={() => onNavigate('semesterSelect')}
             className="hover:text-foreground transition-colors duration-200 cursor-pointer"
           >
-            Browse
+            Semesters
           </button>
-          <a 
-            href="https://github.com" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 hover:text-foreground transition-colors duration-200"
+          <button 
+            onClick={() => onNavigate('about')}
+            className="hover:text-foreground transition-colors duration-200 cursor-pointer"
           >
-            <Github size={14} />
-            <span>GitHub</span>
-          </a>
+            About
+          </button>
         </div>
 
         {/* Copy */}
-        <div className="text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} Notes Hub. Built with ❤️ by the CS NotesHub Core Team.
+        <div className="text-xs text-muted-foreground text-center md:text-right">
+          &copy; {new Date().getFullYear()} Notes Hub • KTU Computer Science & Engineering (2024 Scheme)
         </div>
 
       </div>

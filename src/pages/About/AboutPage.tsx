@@ -8,95 +8,89 @@ import {
 
 interface AboutPageProps {
   onNavigate: (page: string, params?: any) => void;
-  // Optional element id to smooth-scroll to once this page mounts (e.g. 'faq').
-  // Set by callers like LandingPage's "View All FAQs" button, passed through App.tsx.
   scrollTo?: string;
 }
 
 const whyPoints = [
-  'Easy access to academic resources',
-  'Organized by department, semester, and subject',
-  'Saves time spent searching for study materials',
+  'Easy access to KTU 2024 Scheme academic resources',
+  'Organized specifically for Computer Science & Engineering',
+  'Saves hours searching scattered WhatsApp groups and Drive links',
   'Encourages peer-to-peer knowledge sharing',
-  'Continuously updated by the student community',
+  'Continuously maintained and updated by the core team',
 ];
 
 const howItWorks = [
   {
     icon: Search,
-    title: 'Browse Resources',
-    description: 'Pick your department and semester to find notes, papers, and materials organized by subject.',
+    title: 'Browse Semesters',
+    description: 'Select your semester (S1, S3, S5) to view subjects and course materials.',
   },
   {
     icon: Download,
     title: 'Download & Learn',
-    description: 'Access notes, question papers, and lab manuals instantly — no account required.',
+    description: 'Access notes, question papers, and lab records instantly — no account required.',
   },
   {
     icon: UploadCloud,
     title: 'Contribute Materials',
-    description: 'Have notes or papers that could help others? Submit them to grow the shared library.',
+    description: 'Have notes or papers that could help classmates? Submit them to grow the library.',
   },
   {
     icon: CheckCircle2,
     title: 'Resources Get Verified',
-    description: 'Every submission is reviewed by administrators before it becomes publicly visible.',
+    description: 'Every submission is reviewed before it becomes publicly visible.',
   },
   {
     icon: Trophy,
-    title: 'Earn Points & Recognition',
-    description: 'Approved contributions earn points that count toward your profile and the leaderboard.',
+    title: 'Earn Recognition',
+    description: 'Approved contributions earn recognition and help fellow KTU CSE students.',
   },
 ];
 
 const faqs = [
   {
     q: 'What is Notes Hub?',
-    a: 'Notes Hub is a platform where students can access and share academic resources such as notes, previous year question papers, lab manuals, assignments, and video lectures.',
+    a: 'Notes Hub is a centralized academic resource platform designed specifically for KTU Computer Science & Engineering (CSE) students following the 2024 Scheme. It brings together module notes, previous year question papers, series/model exam papers, lab records, viva questions, practical code, assignments, syllabus, and curated video lectures.',
   },
   {
     q: 'Is Notes Hub free to use?',
-    a: 'Yes. Notes Hub is completely free for students.',
+    a: 'Yes. Notes Hub is completely free for all students.',
   },
   {
     q: 'Do I need an account to download resources?',
-    a: 'No. All resources can be accessed without logging in.',
+    a: 'No. All resources can be accessed and downloaded directly without logging in.',
+  },
+  {
+    q: 'Which departments and semesters are currently supported?',
+    a: 'Notes Hub currently focuses on Semester 1 (S1), Semester 3 (S3), and Semester 5 (S5) for Computer Science & Engineering under the KTU 2024 Scheme. Built for CSE today, the platform is designed to expand across other departments and semesters in future releases.',
   },
   {
     q: 'Why should I create an account?',
-    a: 'Creating an account lets you submit resources, track your contributions, earn contribution points, and appear on the leaderboard.',
+    a: 'Creating an account lets you submit resources, track your contributions, and earn contributor recognition.',
   },
   {
     q: 'How can I contribute resources?',
-    a: 'You can submit notes, question papers, lab records, assignments, and other academic materials through the Submit Resource page.',
+    a: 'You can submit notes, question papers, lab records, and assignments through the Submit Resource interface.',
   },
   {
     q: 'Are submitted resources immediately visible?',
-    a: 'No. Resources submitted by users are reviewed by administrators before they are published.',
+    a: 'No. Resources submitted by users are reviewed by team members to ensure accuracy with the KTU 2024 CSE syllabus before publishing.',
   },
   {
     q: 'What resources can I contribute?',
-    a: 'Module notes, previous year question papers, series questions, model papers, lab manuals, assignments, reference books, and educational videos.',
+    a: 'Module notes, previous year question papers, series exam papers, model papers, lab records, viva question sheets, assignments, and educational video recommendations.',
   },
   {
     q: 'How does the verification process work?',
-    a: 'Administrators review submitted resources to ensure they are relevant and useful before approving them for public access.',
-  },
-  {
-    q: 'Will I receive points for contributing?',
-    a: 'Yes. Approved contributions can earn points, which contribute to your profile ranking and leaderboard position.',
+    a: 'Team members review submitted files to verify that they match the 2024 KTU curriculum and maintain high quality before approving.',
   },
   {
     q: 'Can I contribute without creating an account?',
-    a: 'Yes. Resources can be submitted anonymously, but anonymous contributions do not earn points and will appear under "Anonymous Contributor".',
-  },
-  {
-    q: 'Which departments and semesters are supported?',
-    a: 'Our goal is to support all departments and semesters. Coverage will continue to expand as more students contribute resources.',
+    a: 'Yes. Resources can be submitted anonymously, though logged-in users earn profile credit.',
   },
   {
     q: 'How can I report incorrect or outdated resources?',
-    a: 'You can use the feedback/report option available on each resource page, or contact the administrators directly.',
+    a: 'You can reach out directly to the core team listed on the home page.',
   },
 ];
 
@@ -131,7 +125,6 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, scrollTo }) =>
 
   useEffect(() => {
     if (!scrollTo) return;
-    // Small delay so the page has laid out (sections, images, motion) before scrolling.
     const timer = setTimeout(() => {
       document.getElementById(scrollTo)?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -150,7 +143,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, scrollTo }) =>
           className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary/8 dark:bg-primary/12 border border-primary/20 backdrop-blur-md text-[11px] font-semibold text-primary mb-6 shadow-sm select-none"
         >
           <Sparkles size={11} className="text-secondary" />
-          <span>About Notes Hub</span>
+          <span>KTU 2024 SCHEME • CSE</span>
         </motion.div>
 
         <motion.h1
@@ -159,7 +152,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, scrollTo }) =>
           transition={{ delay: 0.1, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="font-serif text-[36px] sm:text-5xl md:text-[56px] font-medium tracking-tight leading-[1.05] mb-6 text-foreground"
         >
-          Made for Students,<br />
+          Made for CSE Students,<br />
           <span className="bg-gradient-to-r from-primary via-indigo-500 to-secondary bg-clip-text text-transparent italic font-semibold">
             by Students.
           </span>
@@ -171,9 +164,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, scrollTo }) =>
           transition={{ delay: 0.2, duration: 0.7 }}
           className="text-base sm:text-[18px] font-normal text-muted-foreground leading-relaxed font-sans"
         >
-          Notes Hub is a community-driven platform created to make academic resources easily
-          accessible to every student. Instead of searching through scattered WhatsApp groups,
-          Drive links, and personal chats, everything students need lives in one place.
+          Notes Hub is a centralized academic resource platform designed specifically for KTU Computer Science & Engineering students following the 2024 Scheme. Instead of searching through scattered drive links and chat groups, everything lives in one clean hub.
         </motion.p>
       </section>
 
@@ -181,18 +172,16 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, scrollTo }) =>
       <section className="mb-20">
         <div className="mb-8">
           <h2 className="font-sans text-2xl sm:text-[32px] font-semibold text-foreground tracking-tight mb-2">
-            Our Story
+            Our Purpose & Vision
           </h2>
           <p className="text-sm text-muted-foreground max-w-xl">
-            Why we built Notes Hub, and where we want to take it.
+            Why we built Notes Hub for KTU CSE 2024 Scheme students.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <AboutSection icon={Target} title="Our Goal">
-            Our aim is to build a centralized repository of academic resources covering all
-            departments and semesters — module notes, previous year question papers, lab
-            materials, assignments, and curated video lectures, all under a single platform.
+          <AboutSection icon={Target} title="Our Focus">
+            Notes Hub is built specifically for Computer Science & Engineering students under the KTU 2024 Scheme. We organize module notes, previous year question papers, series exams, lab records, viva questions, practical code, assignments, and curated video lectures.
           </AboutSection>
 
           <AboutSection icon={ShieldCheck} title="Why Notes Hub?">
@@ -207,23 +196,17 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, scrollTo }) =>
           </AboutSection>
 
           <AboutSection icon={Users} title="Community-Powered Growth">
-            The success of Notes Hub depends on active student participation. Students can
-            contribute notes, question papers, lab records, and other useful resources to help
-            future batches and fellow classmates — every contribution, no matter how small,
-            helps build a stronger learning community.
+            Student participation keeps Notes Hub fresh. By sharing verified notes, question papers, and lab manuals, students help build a stronger academic foundation for fellow CSE classmates.
           </AboutSection>
 
-          <AboutSection icon={ShieldCheck} title="Quality and Verification">
-            To maintain quality, submitted resources go through a verification process before
-            becoming publicly available. This helps ensure content stays relevant, accurate,
-            and genuinely useful.
+          <AboutSection icon={ShieldCheck} title="Quality & Verification">
+            To maintain high academic standards, submitted materials are reviewed by team members before being published to ensure full compliance with the KTU 2024 CSE syllabus.
           </AboutSection>
         </div>
 
         <div className="mt-6">
-          <AboutSection icon={Compass} title="Our Vision">
-            To become the go-to academic resource hub where every student can quickly find the
-            materials they need — and contribute back to the community for future learners.
+          <AboutSection icon={Compass} title="Expansion Roadmap">
+            Built for CSE today with active coverage of S1, S3, and S5. As coursework progresses and contributions grow, Notes Hub will expand across additional semesters and engineering departments.
           </AboutSection>
         </div>
       </section>
@@ -235,7 +218,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, scrollTo }) =>
             How It Works
           </h2>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            From finding a resource to becoming a contributor — five steps.
+            Accessing and contributing CSE academic materials in five simple steps.
           </p>
         </div>
 
@@ -282,17 +265,16 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, scrollTo }) =>
         >
           <GraduationCap size={28} className="mx-auto text-primary mb-4" />
           <h2 className="font-sans font-bold text-2xl sm:text-[34px] tracking-tight text-foreground mb-3">
-            Join the Community
+            Explore CSE Semesters
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto mb-8 leading-relaxed">
-            Browse what's already there, or help build the shelf for the next batch. Every note,
-            paper, and lab record you share saves someone else hours of searching.
+            Browse study materials for S1, S3, and S5 or reach out to contribute resources for your batch.
           </p>
           <button
             onClick={() => onNavigate('landing')}
             className="px-8 py-3.5 rounded-full bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold text-xs uppercase tracking-wider inline-flex items-center gap-2 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all duration-300 cursor-pointer shadow-md"
           >
-            <span>Browse Departments</span>
+            <span>Explore Semesters</span>
             <ArrowRight size={14} className="stroke-[2.5]" />
           </button>
         </motion.div>
@@ -305,7 +287,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, scrollTo }) =>
             Frequently Asked Questions
           </h2>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Everything else you might want to know.
+            Everything you need to know about Notes Hub for KTU CSE 2024 Scheme.
           </p>
         </div>
 

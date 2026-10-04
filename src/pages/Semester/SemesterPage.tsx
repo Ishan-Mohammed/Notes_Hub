@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import type { Semester, Subject } from '../../types/academic.types';
+import { MVP_CONFIG } from '../../lib/config';
 
 import {
   Calculator, Atom, FlaskConical, PenTool, Code, Wrench, Heart,
@@ -14,9 +15,7 @@ import {
 
 import { subjects as mockSubjects } from '../../lib/mockData';
 
-// Fallback only — used if this page is somehow reached without a departmentId
-// (e.g. direct URL access). Normal flow always supplies it from LandingPage.
-const FALLBACK_DEPARTMENT_ID = 1; // CSE
+const FALLBACK_DEPARTMENT_ID = MVP_CONFIG.department.id; // 1 (CSE)
 
 const iconMap: Record<string, React.ComponentType<any>> = {
   Calculator, Atom, FlaskConical, PenTool, Code, Wrench, Heart,
@@ -39,9 +38,6 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
   const [selectedSemesterId, setSelectedSemesterId] = useState<number | null>(null);
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  // Starts true (not false) because selectedSemesterId is null on first render, so the
-  // subjects-loading effect below hasn't run yet. Without this, the empty state
-  // ("No registered subjects") flashes briefly before the first real fetch begins.
   const [loadingSubjects, setLoadingSubjects] = useState(true);
 
   useEffect(() => {
@@ -70,9 +66,13 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
 
       setSemesters(semList);
 
-      const target = initialSemester ?? 3;
+      // Default target semester (must be one of MVP_CONFIG.activeSemesters)
+      const requested = initialSemester && MVP_CONFIG.activeSemesters.includes(initialSemester)
+        ? initialSemester
+        : MVP_CONFIG.activeSemesters[0]; // Default to S1 or S3
+
       const match = semList.find(
-        (sem) => sem.id === target || sem.semester_no === target
+        (sem) => sem.id === requested || sem.semester_no === requested
       );
       setSelectedSemesterId(match?.id ?? semList[0]?.id ?? 1);
     };
@@ -126,6 +126,11 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
     loadSubjects();
   }, [selectedSemesterId, activeDepartmentId]);
 
+  // Filter semester tabs to ONLY active MVP semesters (S1, S3, S5) for the active user interface
+  const visibleSemesters = semesters.filter((sem) =>
+    MVP_CONFIG.activeSemesters.includes(sem.semester_no)
+  );
+
   const activeSemesterNo = semesters.find((sem) => sem.id === selectedSemesterId)?.semester_no;
 
   return (
@@ -139,17 +144,22 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
         <span>Back to Home</span>
       </button>
 
-      <div className="mb-12">
+      <div className="mb-10">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/8 border border-primary/20 text-[11px] font-semibold text-primary mb-3">
+          <GraduationCap size={12} />
+          <span>{MVP_CONFIG.department.fullName} • {MVP_CONFIG.scheme}</span>
+        </div>
         <h1 className="font-sans font-bold text-3xl sm:text-[44px] tracking-tight leading-tight text-foreground mb-3">
           Academic Resource Browser
         </h1>
         <p className="text-base sm:text-[18px] font-normal text-muted-foreground max-w-xl leading-relaxed">
-          Pick a semester below to view its syllabus, modules, question papers, and lab manual templates.
+          Select S1, S3, or S5 below to explore subjects, syllabus, notes, question papers, and lab manuals.
         </p>
       </div>
 
+      {/* Semester Tab Switcher (S1, S3, S5) */}
       <div className="w-full overflow-x-auto pb-4 mb-10 flex gap-2 border-b border-border/20 no-scrollbar">
-        {semesters.map((sem) => {
+        {visibleSemesters.map((sem) => {
           const isActive = selectedSemesterId === sem.id;
           return (
             <button
@@ -175,6 +185,7 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
         })}
       </div>
 
+      {/* Subject Cards Grid */}
       <AnimatePresence mode="wait">
         <motion.div
           key={selectedSemesterId ?? 'none'}
@@ -239,12 +250,18 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
               <BookOpen size={40} className="text-muted-foreground/60 mb-4 stroke-[1.5]" />
               <h3 className="font-display font-semibold text-md text-foreground mb-1">No registered subjects</h3>
               <p className="text-xs text-muted-foreground max-w-xs">
-                We are currently uploading study materials for S{activeSemesterNo ?? '—'} modules.
+                We are currently uploading study materials for S{activeSemesterNo ?? '—'} modules under KTU 2024 Scheme.
               </p>
             </div>
           )}
         </motion.div>
       </AnimatePresence>
+
+      <div className="mt-12 text-center pt-6 border-t border-border/15">
+        <p className="text-xs text-muted-foreground/75 font-sans">
+          Showing active semesters (S1, S3, S5) for Computer Science & Engineering ({MVP_CONFIG.scheme}). Additional semesters will be made available in future releases.
+        </p>
+      </div>
 
     </div>
   );
