@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import type { Resource, ResourceType, Subject } from '../../types/academic.types';
-import { CSE_SUBJECTS_2024 } from '../../lib/config';
+import { CSE_SUBJECTS_2024, getSubjectByIdOrCode } from '../../lib/config';
 import {
   ArrowLeft, FileText, History, Bookmark, Layers,
   BookOpen, Terminal, Youtube, ClipboardList,
@@ -10,6 +10,10 @@ import {
   FlaskConical, FolderGit2, Library, Video, NotebookPen, HelpCircle,
   ChevronRight
 } from 'lucide-react';
+import { subjects as mockSubjects } from '../../lib/mockData';
+
+// Global client-side resource cache to prevent duplicate Supabase fetches during session
+const resourceCache = new Map<string | number, Resource[]>();
 
 interface SubjectDashboardProps {
   subjectId: number | string;
@@ -67,19 +71,66 @@ const RESOURCE_TYPE_CONFIG: Record<string, string[]> = {
   project: ['notes', 'important-topics', 'syllabus'],
 };
 
-import { subjects as mockSubjects } from '../../lib/mockData';
-
 export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, onNavigate }) => {
-  const [subject, setSubject] = useState<Subject | null>(null);
+  // Synchronously compute initial subject for INSTANT (0ms) header & shell rendering
+  const initialSubject = useMemo(() => {
+    const matchedStatic = getSubjectByIdOrCode(subjectId);
+    if (matchedStatic) {
+      return {
+        id: typeof subjectId === 'number' ? subjectId : 1,
+        department_id: 1,
+        semester_id: matchedStatic.semesterId,
+        subject_code: matchedStatic.code,
+        subject_name: matchedStatic.name,
+        slug: matchedStatic.id,
+        description: matchedStatic.description,
+        credits: matchedStatic.credits,
+        icon_name: matchedStatic.iconName,
+        subject_type: 'theory' as const,
+      };
+    }
+
+    const mockMatch = mockSubjects.find(
+      (s, idx) => (idx + 1 + (s.semester_id * 100)) === Number(subjectId)
+    );
+    if (mockMatch) {
+      return {
+        id: Number(subjectId) || 1,
+        department_id: 1,
+        semester_id: mockMatch.semester_id,
+        subject_code: mockMatch.code,
+        subject_name: mockMatch.name,
+        slug: mockMatch.slug || null,
+        description: mockMatch.description || null,
+        credits: mockMatch.credits || 3,
+        icon_name: mockMatch.icon_name || null,
+        subject_type: 'theory' as const,
+      };
+    }
+    return null;
+  }, [subjectId]);
+
+  const [subject, setSubject] = useState<Subject | null>(initialSubject);
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>(MVP_RESOURCE_TYPES);
-  const [resources, setResources] = useState<Resource[]>([]);
+  const [resources, setResources] = useState<Resource[]>(() => resourceCache.get(subjectId) || []);
   const [activeCategory, setActiveCategory] = useState<string>('notes');
-  const [loading, setLoading] = useState(true);
+  const [loadingResources, setLoadingResources] = useState<boolean>(!resourceCache.has(subjectId));
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
+    // Update subject synchronously if prop changes
+    if (initialSubject) {
+      setSubject(initialSubject);
+    }
 
+    // Check memory cache first
+    if (resourceCache.has(subjectId)) {
+      setResources(resourceCache.get(subjectId)!);
+      setLoadingResources(false);
+    } else {
+      setLoadingResources(true);
+    }
+
+    const loadData = async () => {
       try {
         const [subjectRes, typesRes, resourcesRes] = await Promise.all([
           supabase.from('subjects').select('*').eq('id', subjectId).single(),
@@ -92,74 +143,30 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
 
         if (subjectRes.data) {
           setSubject(subjectRes.data);
-        } else {
-          // Fallback lookup from CSE_SUBJECTS_2024 or mockSubjects
-          const staticMatch = CSE_SUBJECTS_2024.find(
-            (s) => String(s.id) === String(subjectId) || s.code === String(subjectId)
-          );
-          const mockMatch = mockSubjects.find(
-            (s, idx) => (idx + 1 + (s.semester_id * 100)) === Number(subjectId)
-          );
-
-          if (staticMatch) {
-            setSubject({
-              id: typeof subjectId === 'number' ? subjectId : 1,
-              department_id: 1,
-              semester_id: staticMatch.semesterId,
-              subject_code: staticMatch.code,
-              subject_name: staticMatch.name,
-              slug: staticMatch.id,
-              description: staticMatch.description,
-              credits: staticMatch.credits,
-              icon_name: staticMatch.iconName,
-              subject_type: 'theory',
-            });
-          } else if (mockMatch) {
-            setSubject({
-              id: Number(subjectId) || 1,
-              department_id: 1,
-              semester_id: mockMatch.semester_id,
-              subject_code: mockMatch.code,
-              subject_name: mockMatch.name,
-              slug: mockMatch.slug || null,
-              description: mockMatch.description || null,
-              credits: mockMatch.credits || 3,
-              icon_name: mockMatch.icon_name || null,
-              subject_type: 'theory',
-            });
-          } else {
-            setSubject(null);
-          }
         }
 
         if (typesRes.data && typesRes.data.length > 0) {
-          // Merge with MVP categories so notes, important-topics, syllabus are present
           const dbFiltered = typesRes.data.filter((rt) =>
             rt.slug && ['notes', 'important-topics', 'syllabus', 'topics'].includes(rt.slug)
           );
           if (dbFiltered.length > 0) {
             setResourceTypes(dbFiltered);
-          } else {
-            setResourceTypes(MVP_RESOURCE_TYPES);
           }
-        } else {
-          setResourceTypes(MVP_RESOURCE_TYPES);
         }
 
         if (resourcesRes.data && resourcesRes.data.length > 0) {
+          resourceCache.set(subjectId, resourcesRes.data);
           setResources(resourcesRes.data);
-        } else {
-          setResources([]);
         }
       } catch (err) {
-        console.error('Error loading subject data:', err);
+        console.error('Error loading subject resources:', err);
+      } finally {
+        setLoadingResources(false);
       }
-
-      setLoading(false);
     };
 
     loadData();
-  }, [subjectId]);
+  }, [subjectId, initialSubject]);
 
   // Allowed resource type slugs: ONLY notes, important-topics, syllabus
   const allowedSlugs = RESOURCE_TYPE_CONFIG[subject?.subject_type ?? 'theory'] ?? RESOURCE_TYPE_CONFIG.theory;
@@ -171,14 +178,6 @@ export const SubjectDashboard: React.FC<SubjectDashboardProps> = ({ subjectId, o
     if (!subject) return;
     setActiveCategory('notes');
   }, [subject]);
-
-  if (loading) {
-    return (
-      <div className="w-full max-w-xl mx-auto px-6 py-32 text-center text-muted-foreground font-sans">
-        Loading subject resources...
-      </div>
-    );
-  }
 
   if (!subject) {
     return (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ThemeProvider } from './context/ThemeContext';
 import { Navbar } from './components/layout/Navbar';
@@ -14,13 +14,14 @@ function AppInner() {
   const [showSplash, setShowSplash] = useState(true);
   const [currentPage, setCurrentPage] = useState('landing');
   const [navParams, setNavParams] = useState<any>({});
-  const handleNavigate = (page: string, params: any = {}) => {
+
+  const handleNavigate = useCallback((page: string, params: any = {}) => {
     setCurrentPage(page);
     setNavParams(params);
-    
-    // Smooth scroll page back to top when navigating
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+    // Instant scroll to top on client-side route change
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className="relative min-h-screen">
       {/* Splash Screen - Overlay sits exactly on top with fixed z-[9999] */}
@@ -37,16 +38,16 @@ function AppInner() {
         
         {/* Floating Glassmorphic Navbar */}
         <Navbar onNavigate={handleNavigate} currentPage={currentPage} />
-        {/* Dynamic Page Viewer with transitions */}
+        {/* Dynamic Page Viewer with instant 150ms transitions */}
         <main className="relative z-10 flex-grow w-full">
           <AnimatePresence mode="wait">
             {currentPage === 'landing' && (
               <motion.div
                 key="landing"
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
               >
                 <LandingPage onNavigate={handleNavigate} />
               </motion.div>
@@ -54,10 +55,10 @@ function AppInner() {
             {currentPage === 'semesterSelect' && (
               <motion.div
                 key="semesterSelect"
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
               >
                 <SemesterSelectPage
                   onNavigate={handleNavigate}
@@ -70,10 +71,10 @@ function AppInner() {
             {currentPage === 'semester' && (
               <motion.div
                 key="semester"
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
               >
                 <SemesterPage 
                   onNavigate={handleNavigate} 
@@ -85,10 +86,10 @@ function AppInner() {
             {currentPage === 'dashboard' && (
               <motion.div
                 key="dashboard"
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
               >
                 <SubjectDashboard 
                   subjectId={navParams.subjectId} 
@@ -99,10 +100,10 @@ function AppInner() {
             {currentPage === 'about' && (
               <motion.div
                 key="about"
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
               >
                 <AboutPage
                   onNavigate={handleNavigate}

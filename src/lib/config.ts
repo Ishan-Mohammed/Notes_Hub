@@ -292,3 +292,35 @@ export const CSE_SUBJECTS_2024: SubjectDefinition[] = [
     orGroupTitle: 'Programme Elective – 2',
   },
 ];
+
+// O(1) Indexed lookup by semester for instant synchronous rendering
+export const SUBJECTS_BY_SEMESTER: Record<number, SubjectDefinition[]> = CSE_SUBJECTS_2024.reduce(
+  (acc, subject) => {
+    if (!acc[subject.semesterId]) {
+      acc[subject.semesterId] = [];
+    }
+    acc[subject.semesterId].push(subject);
+    return acc;
+  },
+  {} as Record<number, SubjectDefinition[]>
+);
+
+// O(1) Indexed lookup by ID or Code
+export const SUBJECT_BY_ID_OR_CODE: Record<string, SubjectDefinition> = CSE_SUBJECTS_2024.reduce(
+  (acc, subject) => {
+    acc[subject.id.toLowerCase()] = subject;
+    acc[subject.code.toLowerCase()] = subject;
+    return acc;
+  },
+  {} as Record<string, SubjectDefinition>
+);
+
+export const getSubjectsForSemester = (semNo: number): SubjectDefinition[] => {
+  return SUBJECTS_BY_SEMESTER[semNo] || [];
+};
+
+export const getSubjectByIdOrCode = (idOrCode: string | number): SubjectDefinition | undefined => {
+  const key = String(idOrCode).toLowerCase();
+  return SUBJECT_BY_ID_OR_CODE[key];
+};
+

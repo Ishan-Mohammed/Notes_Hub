@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
-import { MVP_CONFIG, CSE_SUBJECTS_2024, type SubjectDefinition } from '../../lib/config';
+import { MVP_CONFIG, CSE_SUBJECTS_2024, getSubjectsForSemester, type SubjectDefinition } from '../../lib/config';
 
 import {
   Calculator, Atom, FlaskConical, PenTool, Code,
@@ -27,13 +27,19 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
     ? initialSemester
     : MVP_CONFIG.activeSemesters[0];
 
-  const [subjects, setSubjects] = useState<SubjectDefinition[]>([]);
-  const [loadingSubjects, setLoadingSubjects] = useState(true);
+  // Synchronously initialize subjects from local static config for INSTANT (0ms) render
+  const initialLocalSubjects = getSubjectsForSemester(selectedSemesterNo);
+  const [subjects, setSubjects] = useState<SubjectDefinition[]>(initialLocalSubjects);
+  const [loadingSubjects, setLoadingSubjects] = useState(initialLocalSubjects.length === 0);
 
   useEffect(() => {
-    const loadSubjects = async () => {
-      setLoadingSubjects(true);
+    // If local static subjects exist, ensure state is updated synchronously on semester switch
+    const localSubs = getSubjectsForSemester(selectedSemesterNo);
+    setSubjects(localSubs);
+    setLoadingSubjects(false);
 
+    // Fetch database overrides/updates in the background silently
+    const loadSubjectsFromDb = async () => {
       try {
         const { data, error } = await supabase
           .from('subjects')
@@ -43,18 +49,16 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
           .order('subject_code');
 
         if (!error && data && data.length > 0) {
-          // Filter out lab subjects, Constitution of India MOOC, UCHWT127 and UCHUT128
           const filteredDb = data.filter((s) => {
             const code = s.subject_code?.toUpperCase() || '';
             const type = s.subject_type?.toLowerCase() || '';
             if (type === 'lab' || code.includes('CSL') || code.includes('ESL') || code.includes('PSL')) return false;
-            if (code === 'UCHUM506') return false; // Exclude Constitution of India MOOC
-            if (code === 'UCHWT127' || code === 'UCHUT128') return false; // Exclude Health & Wellness and Life Skills
+            if (code === 'UCHUM506') return false;
+            if (code === 'UCHWT127' || code === 'UCHUT128') return false;
             return true;
           });
 
           if (filteredDb.length > 0) {
-            // Map DB subjects with fallback to CSE_SUBJECTS_2024
             const mapped: SubjectDefinition[] = filteredDb.map((s) => {
               const matchedStatic = CSE_SUBJECTS_2024.find((c) => c.code === s.subject_code || c.id === s.slug);
               return {
@@ -71,21 +75,14 @@ export const SemesterPage: React.FC<SemesterPageProps> = ({ onNavigate, initialS
               };
             });
             setSubjects(mapped);
-            setLoadingSubjects(false);
-            return;
           }
         }
       } catch (err) {
-        console.error('Error fetching subjects from Supabase:', err);
+        console.error('Background fetch of subjects error:', err);
       }
-
-      // Authoritative fallback dataset for KTU 2024 CSE S1, S3, S5
-      const fallback = CSE_SUBJECTS_2024.filter((s) => s.semesterId === selectedSemesterNo);
-      setSubjects(fallback);
-      setLoadingSubjects(false);
     };
 
-    loadSubjects();
+    loadSubjectsFromDb();
   }, [selectedSemesterNo]);
 
   // Render subject grid with systematic equal height alignment & OR choice pairing
